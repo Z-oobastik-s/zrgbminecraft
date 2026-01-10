@@ -1,0 +1,49 @@
+{
+  "common": {
+    "title": "RGB Minecraft",
+    "subtitle": "RGB Text Generator for Minecraft",
+    "author": "Zoobastiks",
+    "year": "2026"
+  },
+  "generator": {
+    "inputPlaceholder": "Enter text...",
+    "outputPlaceholder": "Result will appear here...",
+    "copy": "Copy",
+    "copied": "Copied!",
+    "random": "Random Color",
+    "format": "Code Format",
+    "colorPalette": "Color Palette"
+  },
+  "formats": {
+    "ampersand": "& (Ampersand)",
+    "section": "§ (Section)",
+    "hex": "&x&r&r&g&g&b&b (Hex)",
+    "minimessage": "MiniMessage"
+  },
+  "formatting": {
+    "bold": "Bold",
+    "italic": "Italic",
+    "underline": "Underline",
+    "strikethrough": "Strikethrough",
+    "obfuscated": "Obfuscated"
+  },
+  "colors": {
+    "black": "Black",
+    "darkBlue": "Dark Blue",
+    "darkGreen": "Dark Green",
+    "darkAqua": "Dark Aqua",
+    "darkRed": "Dark Red",
+    "darkPurple": "Dark Purple",
+    "gold": "Gold",
+    "gray": "Gray",
+    "darkGray": "Dark Gray",
+    "blue": "Blue",
+    "green": "Green",
+    "aqua": "Aqua",
+    "red": "Red",
+    "lightPurple": "Light Purple",
+    "yellow": "Yellow",
+    "white": "White"
+  }
+}
+

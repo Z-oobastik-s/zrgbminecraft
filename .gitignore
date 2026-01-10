@@ -1,0 +1,3 @@
+reset_repo.bat 
+deploy.bat 
+.env.local 
