@@ -1,0 +1,57 @@
+{
+  "common": {
+    "title": "RGB Minecraft",
+    "subtitle": "Генератор RGB текста для Minecraft",
+    "author": "Zoobastiks",
+    "year": "2026"
+  },
+  "generator": {
+    "inputLabel": "Ввод",
+    "inputPlaceholder": "Введите текст...",
+    "outputLabel": "Результат",
+    "outputPlaceholder": "Результат появится здесь...",
+    "copy": "Скопировать",
+    "copied": "Скопировано!",
+    "random": "Случайный цвет",
+    "format": "Формат кода",
+    "colorPalette": "Палитра цветов",
+    "preview": "Предпросмотр:",
+    "rainbow": "Радуга"
+  },
+  "formats": {
+    "label": "Формат:",
+    "ampersand": "& (Ampersand)",
+    "section": "§ (Section)",
+    "hex": "&x&r&r&g&g&b&b (Hex)",
+    "minimessage": "MiniMessage"
+  },
+  "formatting": {
+    "bold": "Жирный",
+    "italic": "Курсив",
+    "underline": "Подчеркивание",
+    "strikethrough": "Зачеркивание",
+    "obfuscated": "Зашифрованный"
+  },
+  "colors": {
+    "paletteTitle": "Палитра цветов:",
+    "customRgb": "Свой RGB:",
+    "applyColor": "Применить цвет",
+    "black": "Черный",
+    "darkBlue": "Темно-синий",
+    "darkGreen": "Темно-зеленый",
+    "darkAqua": "Темно-бирюзовый",
+    "darkRed": "Темно-красный",
+    "darkPurple": "Темно-фиолетовый",
+    "gold": "Золотой",
+    "gray": "Серый",
+    "darkGray": "Темно-серый",
+    "blue": "Синий",
+    "green": "Зеленый",
+    "aqua": "Бирюзовый",
+    "red": "Красный",
+    "lightPurple": "Светло-фиолетовый",
+    "yellow": "Желтый",
+    "white": "Белый"
+  }
+}
+
