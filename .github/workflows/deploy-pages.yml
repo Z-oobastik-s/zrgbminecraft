@@ -7,10 +7,6 @@ on:
       - master
   workflow_dispatch:
 
-# GitHub: use Node 24 for JS actions (checkout/setup-node), see changelog 2025-09-19
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-
 permissions:
   contents: read
   pages: write
@@ -25,31 +21,22 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: '24'
-          cache: npm
+          # Do not use npm cache here: it requires package-lock.json on disk before install.
+          # If the repo has no lockfile yet, cache step fails the whole job.
+          package-manager-cache: false
 
       - name: Install dependencies
-        shell: bash
-        run: |
-          set -e
-          if [ -f package-lock.json ]; then
-            npm ci
-          elif [ -f npm-shrinkwrap.json ]; then
-            npm ci
-          else
-            echo "No lock file: using npm install (add package-lock.json to the repo for reproducible builds)"
-            npm install
-          fi
+        run: npm install --no-audit --no-fund
 
       - name: Build static export
         env:
           NODE_ENV: production
-          # GitHub Pages URL: https://<user>.github.io/<repo>/
           BASE_PATH: /${{ github.event.repository.name }}
         run: npm run build
 
