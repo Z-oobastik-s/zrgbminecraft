@@ -5,6 +5,27 @@
     "author": "Zoobastiks",
     "year": "2026"
   },
+  "nav": {
+    "generator": "Generator",
+    "enchant": "Enchantments",
+    "effects": "Effects"
+  },
+  "enchantPage": {
+    "title": "Minecraft enchantments",
+    "hint": "Click an ID to copy",
+    "colName": "Name",
+    "colId": "ID",
+    "colItems": "Items",
+    "colMax": "Max",
+    "copied": "OK"
+  },
+  "effectsPage": {
+    "title": "Minecraft effects",
+    "hint": "Click an ID in parentheses to copy",
+    "positive": "Beneficial",
+    "negative": "Harmful",
+    "copied": "OK"
+  },
   "generator": {
     "inputPlaceholder": "Enter text...",
     "outputPlaceholder": "Result will appear here...",

@@ -5,6 +5,27 @@
     "author": "Zoobastiks",
     "year": "2026"
   },
+  "nav": {
+    "generator": "Генератор",
+    "enchant": "Зачарования",
+    "effects": "Эффекты"
+  },
+  "enchantPage": {
+    "title": "Зачарования Minecraft",
+    "hint": "Нажмите на ID, чтобы скопировать",
+    "colName": "Название",
+    "colId": "ID",
+    "colItems": "Предметы",
+    "colMax": "Макс.",
+    "copied": "OK"
+  },
+  "effectsPage": {
+    "title": "Эффекты Minecraft",
+    "hint": "Нажмите на ID в скобках, чтобы скопировать",
+    "positive": "Полезные",
+    "negative": "Вредные",
+    "copied": "OK"
+  },
   "generator": {
     "inputPlaceholder": "Введите текст...",
     "outputPlaceholder": "Результат появится здесь...",

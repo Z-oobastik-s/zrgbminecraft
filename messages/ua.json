@@ -5,6 +5,27 @@
     "author": "Zoobastiks",
     "year": "2026"
   },
+  "nav": {
+    "generator": "Генератор",
+    "enchant": "Зачарування",
+    "effects": "Ефекти"
+  },
+  "enchantPage": {
+    "title": "Зачарування Minecraft",
+    "hint": "Натисніть ID, щоб скопіювати",
+    "colName": "Назва",
+    "colId": "ID",
+    "colItems": "Предмети",
+    "colMax": "Макс.",
+    "copied": "OK"
+  },
+  "effectsPage": {
+    "title": "Ефекти Minecraft",
+    "hint": "Натисніть ID у дужках, щоб скопіювати",
+    "positive": "Корисні",
+    "negative": "Шкідливі",
+    "copied": "OK"
+  },
   "generator": {
     "inputPlaceholder": "Введіть текст...",
     "outputPlaceholder": "Результат з'явиться тут...",

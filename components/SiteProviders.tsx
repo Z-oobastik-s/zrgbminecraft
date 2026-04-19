@@ -1,0 +1,47 @@
+'use client'
+
+import { useState, useEffect, type ReactNode } from 'react'
+import { NextIntlClientProvider } from 'next-intl'
+import { Header } from '@/components/Header'
+import type messagesRu from '@/messages/ru.json'
+
+const locales = ['ru', 'ua', 'en'] as const
+export type AppLocale = (typeof locales)[number]
+type Messages = typeof messagesRu
+
+export function isAppLocale(value: string): value is AppLocale {
+  return (locales as readonly string[]).includes(value)
+}
+
+export function SiteProviders({ children }: { children: ReactNode }) {
+  const [locale, setLocale] = useState<AppLocale>('ru')
+  const [messages, setMessages] = useState<Messages | null>(null)
+
+  useEffect(() => {
+    void import(`../messages/${locale}.json`).then((mod) => {
+      setMessages(mod.default)
+    })
+  }, [locale])
+
+  if (!messages) {
+    return (
+      <div className="flex h-[100dvh] max-h-[100dvh] items-center justify-center overflow-hidden">
+        <div className="text-zinc-500">Loading...</div>
+      </div>
+    )
+  }
+
+  return (
+    <NextIntlClientProvider messages={messages} locale={locale}>
+      <div className="flex h-[100dvh] max-h-[100dvh] min-h-0 flex-col overflow-hidden">
+        <Header
+          currentLocale={locale}
+          onLocaleChange={(next) => {
+            if (isAppLocale(next)) setLocale(next)
+          }}
+        />
+        <div className="flex min-h-0 flex-1 flex-col">{children}</div>
+      </div>
+    </NextIntlClientProvider>
+  )
+}

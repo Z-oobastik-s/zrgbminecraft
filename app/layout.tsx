@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { Inter, Press_Start_2P } from 'next/font/google'
+import { SiteProviders } from '@/components/SiteProviders'
 import './globals.css'
 
 const inter = Inter({
@@ -43,7 +44,7 @@ export default function RootLayout({
       <body
         className={`${inter.className} h-[100dvh] overflow-hidden bg-[#12141d] text-zinc-100 antialiased`}
       >
-        {children}
+        <SiteProviders>{children}</SiteProviders>
       </body>
     </html>
   )
