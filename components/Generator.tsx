@@ -700,8 +700,10 @@ export function Generator() {
 
       {/* Three columns - YAML can expand to full width under the preview */}
       <section
-        className={`grid min-h-0 min-w-0 flex-1 gap-2 overflow-hidden ${
-          yamlExpanded ? 'grid-cols-1' : 'grid-cols-1 xl:grid-cols-3'
+        className={`min-h-0 min-w-0 flex-1 gap-2 overflow-hidden ${
+          yamlExpanded
+            ? 'flex flex-col'
+            : 'grid grid-cols-1 xl:grid-cols-3'
         }`}
       >
         {!yamlExpanded ? (
@@ -933,7 +935,7 @@ export function Generator() {
         <div
           className={
             yamlExpanded
-              ? 'flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden'
+              ? 'flex min-h-0 min-w-0 flex-1 basis-0 flex-col overflow-hidden'
               : 'min-h-0 min-w-0'
           }
         >

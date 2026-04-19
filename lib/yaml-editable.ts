@@ -16,6 +16,8 @@ export type YamlStringField = {
   end: number
   value: string
   originalToken: string
+  /** Present for JSON files: path to replace when saving (not raw-byte YAML edits). */
+  jsonSegments?: (string | number)[]
 }
 
 function pathSegmentsFromVisit(
@@ -115,6 +117,7 @@ export function applyYamlStringEdits(
   type Edit = { start: number; end: number; text: string }
   const edits: Edit[] = []
   for (const f of fields) {
+    if (f.jsonSegments?.length) continue
     const next = valuesById[f.id]
     if (next === undefined || next === f.value) continue
     const encoded = encodeScalarForYaml(next, f.originalToken)

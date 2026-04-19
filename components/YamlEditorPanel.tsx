@@ -16,6 +16,12 @@ import {
   parseYamlDiagnostics,
   type YamlStringField,
 } from '@/lib/yaml-editable'
+import {
+  extractJsonStringFields,
+  applyJsonStringEdits,
+  parseJsonDiagnostics,
+  pickYamlOrJson,
+} from '@/lib/json-editable'
 import { stripToRgbPlainInput } from '@/lib/strip-minecraft-codes'
 import type { CodeFormat } from '@/lib/rgb-generator'
 
@@ -59,32 +65,59 @@ export function YamlEditorPanel({
 
   const [raw, setRaw] = useState('')
   const [fileName, setFileName] = useState('')
+  const [sourceKind, setSourceKind] = useState<'yaml' | 'json'>('yaml')
   const [fields, setFields] = useState<YamlStringField[]>([])
   const [valuesById, setValuesById] = useState<Record<string, string>>({})
   const [parseError, setParseError] = useState<string | null>(null)
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(0)
 
-  const loadFromText = useCallback((text: string, name: string) => {
-    setRaw(text)
-    setFileName(name)
-    const diag = parseYamlDiagnostics(text)
-    if (!diag.valid) {
-      setParseError(diag.error ?? 'Invalid YAML')
-      setFields([])
-      setValuesById({})
+  const loadFromText = useCallback(
+    (text: string, name: string) => {
+      setRaw(text)
+      setFileName(name)
+      const kind = pickYamlOrJson(name, text)
+      setSourceKind(kind)
+
+      if (kind === 'json') {
+        const diag = parseJsonDiagnostics(text)
+        if (!diag.valid) {
+          setParseError(diag.error ?? 'Invalid JSON')
+          setFields([])
+          setValuesById({})
+          onYamlEnvironmentReset?.()
+          return
+        }
+        setParseError(null)
+        const nextFields = extractJsonStringFields(text)
+        const init: Record<string, string> = {}
+        for (const f of nextFields) init[f.id] = f.value
+        setFields(nextFields)
+        setValuesById(init)
+        setPage(0)
+        onYamlEnvironmentReset?.()
+        return
+      }
+
+      const diag = parseYamlDiagnostics(text)
+      if (!diag.valid) {
+        setParseError(diag.error ?? 'Invalid YAML')
+        setFields([])
+        setValuesById({})
+        onYamlEnvironmentReset?.()
+        return
+      }
+      setParseError(null)
+      const nextFields = extractYamlStringFields(text)
+      const init: Record<string, string> = {}
+      for (const f of nextFields) init[f.id] = f.value
+      setFields(nextFields)
+      setValuesById(init)
+      setPage(0)
       onYamlEnvironmentReset?.()
-      return
-    }
-    setParseError(null)
-    const nextFields = extractYamlStringFields(text)
-    const init: Record<string, string> = {}
-    for (const f of nextFields) init[f.id] = f.value
-    setFields(nextFields)
-    setValuesById(init)
-    setPage(0)
-    onYamlEnvironmentReset?.()
-  }, [onYamlEnvironmentReset])
+    },
+    [onYamlEnvironmentReset]
+  )
 
   const onPickFile = useCallback(
     (e: ChangeEvent<HTMLInputElement>) => {
@@ -170,16 +203,25 @@ export function YamlEditorPanel({
 
   const download = useCallback(() => {
     if (!raw || !fields.length) return
-    const out = applyYamlStringEdits(raw, fields, valuesById)
-    const blob = new Blob([out], { type: 'text/yaml;charset=utf-8' })
+    const out =
+      sourceKind === 'json'
+        ? applyJsonStringEdits(raw, fields, valuesById)
+        : applyYamlStringEdits(raw, fields, valuesById)
+    const blob = new Blob([out], {
+      type:
+        sourceKind === 'json'
+          ? 'application/json;charset=utf-8'
+          : 'text/yaml;charset=utf-8',
+    })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
-    const base = fileName.replace(/\.ya?ml$/i, '') || 'edited'
+    const base = fileName.replace(/\.(ya?ml|json)$/i, '') || 'edited'
     a.href = url
-    a.download = `${base}-edited.yml`
+    a.download =
+      sourceKind === 'json' ? `${base}-edited.json` : `${base}-edited.yml`
     a.click()
     URL.revokeObjectURL(url)
-  }, [raw, fields, valuesById, fileName])
+  }, [raw, fields, valuesById, fileName, sourceKind])
 
   const canExpand = !!raw && !parseError && fields.length > 0
 
@@ -187,11 +229,11 @@ export function YamlEditorPanel({
     <div
       className={`panel flex min-h-0 min-w-0 flex-col gap-2 rounded-xl border border-white/[0.06] bg-[#161922] p-3 ${
         expanded
-          ? 'flex-1 overflow-hidden'
+          ? 'min-h-0 flex-1 basis-0 overflow-hidden'
           : 'overflow-y-auto'
       }`}
     >
-      <div className="flex flex-wrap items-center justify-between gap-2">
+      <div className="flex shrink-0 flex-wrap items-center justify-between gap-2">
         <h2 className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
           {t('columnYaml')}
         </h2>
@@ -218,11 +260,11 @@ export function YamlEditorPanel({
         )}
       </div>
 
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex shrink-0 flex-wrap items-center gap-2">
         <input
           ref={fileInputRef}
           type="file"
-          accept=".yml,.yaml,text/yaml,text/x-yaml,application/x-yaml"
+          accept=".yml,.yaml,.json,text/yaml,text/x-yaml,application/x-yaml,application/json"
           className="hidden"
           onChange={onPickFile}
         />
@@ -246,28 +288,34 @@ export function YamlEditorPanel({
       </div>
 
       {fileName ? (
-        <p className="truncate font-mono text-[10px] text-zinc-500" title={fileName}>
+        <p
+          className="shrink-0 truncate font-mono text-[10px] text-zinc-500"
+          title={fileName}
+        >
           {fileName}
         </p>
       ) : null}
 
       {parseError ? (
-        <p className="rounded border border-red-500/30 bg-red-950/40 px-2 py-1.5 text-[11px] text-red-200">
-          {t('yamlParseError')} {parseError}
+        <p className="shrink-0 rounded border border-red-500/30 bg-red-950/40 px-2 py-1.5 text-[11px] text-red-200">
+          {t(sourceKind === 'json' ? 'jsonParseError' : 'yamlParseError')}{' '}
+          {parseError}
         </p>
       ) : null}
 
       {!raw ? (
-        <p className="text-[11px] leading-relaxed text-zinc-500">{t('yamlNoFile')}</p>
+        <p className="shrink-0 text-[11px] leading-relaxed text-zinc-500">
+          {t('yamlNoFile')}
+        </p>
       ) : !parseError ? (
-        <p className="text-[11px] text-zinc-500">
+        <p className="shrink-0 text-[11px] text-zinc-500">
           {t('yamlFieldsCount', { count: fields.length })}
         </p>
       ) : null}
 
       {raw && !parseError && fields.length > 0 ? (
         expanded ? (
-          <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-hidden">
+          <div className="flex min-h-0 flex-1 basis-0 flex-col gap-2 overflow-hidden">
             <input
               type="search"
               value={search}
@@ -306,7 +354,7 @@ export function YamlEditorPanel({
               </p>
             ) : null}
 
-            <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto pr-0.5">
+            <div className="flex min-h-0 flex-1 basis-0 flex-col gap-2 overflow-y-auto pr-0.5">
               {pageSlice.map((f) => (
                 <label
                   key={f.id}
