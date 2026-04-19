@@ -115,6 +115,7 @@ export function Generator() {
   const [lowercaseHex, setLowercaseHex] = useState(false)
 
   const [copied, setCopied] = useState(false)
+  const [urlCopied, setUrlCopied] = useState(false)
   /** Lets user type partial hex; commit when valid 6-digit. */
   const [hexDraftByIndex, setHexDraftByIndex] = useState<Record<number, string>>(
     {}
@@ -326,11 +327,38 @@ export function Generator() {
       suffix,
       lowercaseHex,
     }
-    const url = `${typeof window !== 'undefined' ? window.location.origin + window.location.pathname : ''}#${encodeHash(payload)}`
+    const base =
+      typeof window !== 'undefined'
+        ? `${window.location.origin}${window.location.pathname}${window.location.search}`
+        : ''
+    const url = `${base}#${encodeHash(payload)}`
     try {
       await navigator.clipboard.writeText(url)
+      setUrlCopied(true)
+      if (copyResetTimeoutRef.current) clearTimeout(copyResetTimeoutRef.current)
+      copyResetTimeoutRef.current = setTimeout(() => {
+        setUrlCopied(false)
+        copyResetTimeoutRef.current = null
+      }, 2000)
     } catch {
-      /* ignore */
+      try {
+        const ta = document.createElement('textarea')
+        ta.value = url
+        ta.style.position = 'fixed'
+        ta.style.left = '-9999px'
+        document.body.appendChild(ta)
+        ta.select()
+        document.execCommand('copy')
+        document.body.removeChild(ta)
+        setUrlCopied(true)
+        if (copyResetTimeoutRef.current) clearTimeout(copyResetTimeoutRef.current)
+        copyResetTimeoutRef.current = setTimeout(() => {
+          setUrlCopied(false)
+          copyResetTimeoutRef.current = null
+        }, 2000)
+      } catch {
+        /* ignore */
+      }
     }
   }, [
     inputText,
@@ -756,26 +784,35 @@ export function Generator() {
             {t('lowercaseHex')}
           </label>
 
-          <div className="relative min-h-[6rem] flex-1">
+          <div className="relative z-0 min-h-[6rem] flex-1">
             <textarea
               value={outputText}
               readOnly
               placeholder={t('outputPlaceholder')}
-              className="h-full min-h-[6rem] w-full resize-none rounded-lg border border-white/10 bg-[#0d0f14] px-2 py-2 pb-10 font-mono text-[10px] leading-relaxed text-zinc-300 outline-none"
+              className="relative z-0 h-full min-h-[6rem] w-full resize-none rounded-lg border border-white/10 bg-[#0d0f14] px-2 py-2 pb-10 font-mono text-[10px] leading-relaxed text-zinc-300 outline-none"
             />
-            <div className="absolute bottom-2 right-2 flex items-center gap-1">
+            <div className="pointer-events-auto absolute bottom-2 right-2 z-20 flex items-center gap-1">
               <button
                 type="button"
                 onClick={copyUrl}
-                className="inline-flex items-center gap-1 rounded-md border border-white/10 bg-black/40 px-2 py-1 text-[11px] text-zinc-300 hover:bg-white/10"
+                className="inline-flex cursor-pointer items-center gap-1 rounded-md border border-white/10 bg-black/90 px-2 py-1 text-[11px] text-zinc-200 shadow-md hover:bg-zinc-800"
               >
-                <Link2 className="h-3 w-3" />
-                {t('copyUrl')}
+                {urlCopied ? (
+                  <>
+                    <Check className="h-3 w-3" />
+                    {t('copied')}
+                  </>
+                ) : (
+                  <>
+                    <Link2 className="h-3 w-3" />
+                    {t('copyUrl')}
+                  </>
+                )}
               </button>
               <button
                 type="button"
                 onClick={copyToClipboard}
-                className="inline-flex items-center gap-1 rounded-md bg-sky-600 px-2 py-1 text-[11px] text-white hover:bg-sky-500"
+                className="inline-flex cursor-pointer items-center gap-1 rounded-md bg-sky-600 px-2 py-1 text-[11px] text-white shadow-md hover:bg-sky-500"
               >
                 {copied ? (
                   <>

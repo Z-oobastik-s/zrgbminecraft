@@ -181,14 +181,19 @@ function generateLegacyFormatCodes(options: FormattingOptions, format: CodeForma
   return codes.join('')
 }
 
-function minimessageWrapInner(text: string, options: FormattingOptions): string {
-  if (!text) return ''
-  let s = text
-  if (options.obfuscated) s = `<obfuscated>${s}</obfuscated>`
-  if (options.strikethrough) s = `<strikethrough>${s}</strikethrough>`
-  if (options.underline) s = `<underlined>${s}</underlined>`
-  if (options.italic) s = `<italic>${s}</italic>`
-  if (options.bold) s = `<bold>${s}</bold>`
+/**
+ * Wraps colored MiniMessage core (gradient / color / per-char join) with short tags
+ * **outside** the color markup: `<b><gradient>...</gradient></b>`.
+ * Order (inner to outer): obf, st, u, i, b.
+ */
+function minimessageWrapOuter(core: string, options: FormattingOptions): string {
+  if (!core) return ''
+  let s = core
+  if (options.obfuscated) s = `<obf>${s}</obf>`
+  if (options.strikethrough) s = `<st>${s}</st>`
+  if (options.underline) s = `<u>${s}</u>`
+  if (options.italic) s = `<i>${s}</i>`
+  if (options.bold) s = `<b>${s}</b>`
   return s
 }
 
@@ -204,8 +209,8 @@ export function generateMinimessageGradientOutput(
 ): string {
   if (!text || colors.length < 2) return ''
   const stops = minimessageGradientTag(colors, lowercaseHex)
-  const inner = minimessageWrapInner(text, options)
-  return `<gradient:${stops}>${inner}</gradient>`
+  const core = `<gradient:${stops}>${text}</gradient>`
+  return minimessageWrapOuter(core, options)
 }
 
 export function generateRainbowGradient(
@@ -228,10 +233,9 @@ export function generateRainbowGradient(
       const hue = (index * 360) / chars.length
       const color = hslToRgb(hue, 100, 50)
       const hex = rgbToHex(color.r, color.g, color.b, lowercaseHex)
-      const inner = minimessageWrapInner(char, options)
-      result.push(`<color:#${hex}>${inner}</color>`)
+      result.push(`<color:#${hex}>${char}</color>`)
     })
-    return result.join('')
+    return minimessageWrapOuter(result.join(''), options)
   }
 
   if (format === 'json') {
@@ -315,8 +319,8 @@ export function generateSingleColor(
 
   if (format === 'minimessage') {
     const hex = rgbToHexString(color, lowercaseHex)
-    const inner = minimessageWrapInner(text, options)
-    return `<color:#${hex}>${inner}</color>`
+    const core = `<color:#${hex}>${text}</color>`
+    return minimessageWrapOuter(core, options)
   }
 
   if (format === 'json') {
@@ -485,13 +489,16 @@ export function generateGradientText(
     const formatCodes = generateLegacyFormatCodes(options, format)
 
     if (format === 'minimessage') {
-      const inner = minimessageWrapInner(char, options)
-      result.push(`${colorCode}${inner}</color>`)
+      result.push(`${colorCode}${char}</color>`)
     } else {
       result.push(`${colorCode}${formatCodes}${char}`)
     }
   })
-  return result.join('')
+  const joined = result.join('')
+  if (format === 'minimessage') {
+    return minimessageWrapOuter(joined, options)
+  }
+  return joined
 }
 
 export interface PreviewSegment {
