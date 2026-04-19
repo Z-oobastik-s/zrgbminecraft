@@ -15,8 +15,10 @@ export function useCopyFeedback(duration = 1400) {
 
   const copy = useCallback(
     async (text: string) => {
+      let ok = false
       try {
         await navigator.clipboard.writeText(text)
+        ok = true
       } catch {
         try {
           const ta = document.createElement('textarea')
@@ -25,12 +27,13 @@ export function useCopyFeedback(duration = 1400) {
           ta.style.left = '-9999px'
           document.body.appendChild(ta)
           ta.select()
-          document.execCommand('copy')
+          ok = document.execCommand('copy')
           document.body.removeChild(ta)
         } catch {
           /* ignore */
         }
       }
+      if (!ok) return
       setCopiedId(text)
       if (timerRef.current) clearTimeout(timerRef.current)
       timerRef.current = setTimeout(() => {

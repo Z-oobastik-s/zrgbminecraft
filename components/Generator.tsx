@@ -40,6 +40,8 @@ import { stripToRgbPlainInput } from '@/lib/strip-minecraft-codes'
 import { YamlEditorPanel } from './YamlEditorPanel'
 
 const HASH_PREFIX = 's='
+/** Reject oversized hash fragments before atob/JSON.parse blocks the main thread. */
+const MAX_HASH_B64_LENGTH = 65536
 
 type PresetPayload = {
   v: 1
@@ -156,6 +158,7 @@ function decodeHash(hash: string): PresetPayload | null {
   if (!hash.startsWith(HASH_PREFIX)) return null
   try {
     const raw = hash.slice(HASH_PREFIX.length)
+    if (raw.length > MAX_HASH_B64_LENGTH) return null
     const bin = atob(raw)
     const bytes = new Uint8Array(bin.length)
     for (let i = 0; i < bin.length; i++) {

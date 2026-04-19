@@ -4,10 +4,24 @@ import { useState, useEffect, type ReactNode } from 'react'
 import { NextIntlClientProvider } from 'next-intl'
 import { Header } from '@/components/Header'
 import type messagesRu from '@/messages/ru.json'
+import ruPkg from '@/messages/ru.json'
+import enPkg from '@/messages/en.json'
+import uaPkg from '@/messages/ua.json'
 
 const locales = ['ru', 'ua', 'en'] as const
 export type AppLocale = (typeof locales)[number]
 type Messages = typeof messagesRu
+
+const LOADING_TEXT: Record<AppLocale, string> = {
+  ru: ruPkg.common.loading,
+  ua: uaPkg.common.loading,
+  en: enPkg.common.loading,
+}
+
+function documentLang(locale: AppLocale): string {
+  if (locale === 'ua') return 'uk'
+  return locale
+}
 
 export function isAppLocale(value: string): value is AppLocale {
   return (locales as readonly string[]).includes(value)
@@ -23,10 +37,15 @@ export function SiteProviders({ children }: { children: ReactNode }) {
     })
   }, [locale])
 
+  useEffect(() => {
+    if (typeof document === 'undefined') return
+    document.documentElement.lang = documentLang(locale)
+  }, [locale])
+
   if (!messages) {
     return (
       <div className="flex h-[100dvh] max-h-[100dvh] items-center justify-center overflow-hidden">
-        <div className="text-zinc-500">Loading...</div>
+        <div className="text-zinc-500">{LOADING_TEXT[locale]}</div>
       </div>
     )
   }

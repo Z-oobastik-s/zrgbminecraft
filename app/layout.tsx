@@ -1,6 +1,9 @@
 import type { Metadata } from 'next'
 import { Inter, Press_Start_2P } from 'next/font/google'
 import { SiteProviders } from '@/components/SiteProviders'
+import { SITE_KEYWORDS } from '@/lib/seo-keywords'
+import { websiteJsonLd } from '@/lib/seo-jsonld'
+import { absoluteUrl } from '@/lib/site-url'
 import './globals.css'
 
 const inter = Inter({
@@ -18,19 +21,48 @@ const mcPixel = Press_Start_2P({
 const basePath = process.env.BASE_PATH ?? ''
 const faviconUrl = `${basePath}/icon.png`
 
+const rootDescription =
+  'RGB Minecraft: gradient and solid RGB text for chat and configs (MiniMessage, & and § codes, JSON, BBCode), YAML or JSON string editor, enchantment and effect ID lists. EN / RU / UA. | Генератор RGB текста для Minecraft, редактор YAML/JSON, ID зачарований и эффектов. | Генератор RGB тексту Minecraft, YAML/JSON, ID зачарувань та ефектів.'
+
 export const metadata: Metadata = {
-  title: 'RGB Minecraft - Text Generator',
-  description: 'Powerful RGB text generator for Minecraft plugins and chat',
-  keywords: 'minecraft, rgb, text generator, color codes, minimessage',
+  metadataBase: new URL(absoluteUrl('/')),
+  title: {
+    default: 'RGB Minecraft - Text Generator',
+    template: '%s | RGB Minecraft',
+  },
+  description: rootDescription,
+  keywords: SITE_KEYWORDS,
   authors: [{ name: 'Zoobastiks' }],
   creator: 'Zoobastiks',
   icons: {
     icon: [{ url: faviconUrl, sizes: '64x64', type: 'image/png' }],
   },
+  alternates: {
+    canonical: absoluteUrl('/'),
+    languages: {
+      'ru-RU': absoluteUrl('/'),
+      'en-US': absoluteUrl('/'),
+      'uk-UA': absoluteUrl('/'),
+      'x-default': absoluteUrl('/'),
+    },
+  },
   openGraph: {
     title: 'RGB Minecraft - Text Generator',
-    description: 'Powerful RGB text generator for Minecraft plugins and chat',
+    description: rootDescription,
+    url: absoluteUrl('/'),
+    siteName: 'RGB Minecraft',
+    locale: 'ru_RU',
+    alternateLocale: ['en_US', 'uk_UA'],
     type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'RGB Minecraft - Text Generator',
+    description: rootDescription,
+  },
+  robots: {
+    index: true,
+    follow: true,
   },
 }
 
@@ -40,10 +72,20 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="ru" className={`dark ${inter.variable} ${mcPixel.variable}`}>
+    <html
+      lang="ru"
+      suppressHydrationWarning
+      className={`dark ${inter.variable} ${mcPixel.variable}`}
+    >
       <body
         className={`${inter.className} h-[100dvh] overflow-hidden bg-[#12141d] text-zinc-100 antialiased`}
       >
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify(websiteJsonLd()),
+          }}
+        />
         <SiteProviders>{children}</SiteProviders>
       </body>
     </html>

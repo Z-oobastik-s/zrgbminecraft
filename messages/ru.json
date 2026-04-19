@@ -3,7 +3,8 @@
     "title": "RGB Minecraft",
     "subtitle": "Генератор RGB текста для Minecraft",
     "author": "Zoobastiks",
-    "year": "2026"
+    "year": "2026",
+    "loading": "Загрузка..."
   },
   "nav": {
     "generator": "Генератор",
