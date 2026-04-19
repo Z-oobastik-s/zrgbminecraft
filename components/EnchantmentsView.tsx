@@ -26,69 +26,69 @@ export function EnchantmentsView() {
     return [all.slice(0, mid), all.slice(mid)] as const
   }, [])
 
-  const renderTable = (rows: typeof MINECRAFT_ENCHANTMENTS) => (
-    <table className="w-full table-fixed border-collapse text-[clamp(8px,1.05vmin,11px)] leading-tight">
-      <thead>
-        <tr className="border-b border-white/[0.08] bg-[#141722] text-left text-[9px] font-semibold uppercase tracking-wide text-zinc-500 sm:text-[10px]">
-          <th className="w-[36%] px-1 py-0.5 sm:px-1.5 sm:py-1">{t('colName')}</th>
-          <th className="w-[30%] px-1 py-0.5 sm:px-1.5 sm:py-1">{t('colId')}</th>
-          <th className="w-[22%] px-1 py-0.5 text-right sm:px-1.5 sm:py-1">
-            {t('colItems')}
-          </th>
-          <th className="w-[12%] px-0.5 py-0.5 text-center sm:py-1">{t('colMax')}</th>
-        </tr>
-      </thead>
-      <tbody>
+  const grid =
+    'grid grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)_auto_2.25rem] gap-x-2 gap-y-0 text-[11px] leading-tight sm:text-xs sm:gap-x-3'
+
+  const renderBlock = (rows: typeof MINECRAFT_ENCHANTMENTS) => (
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div
+        className={`${grid} shrink-0 border-b border-white/[0.08] bg-[#131722] px-2 py-1.5 text-[9px] font-semibold uppercase tracking-wide text-zinc-500 sm:px-2.5 sm:text-[10px]`}
+      >
+        <span className="truncate">{t('colName')}</span>
+        <span>{t('colId')}</span>
+        <span className="text-right">{t('colItems')}</span>
+        <span className="text-center">{t('colMax')}</span>
+      </div>
+      <div className="min-h-0 flex-1 divide-y divide-white/[0.05]">
         {rows.map((row) => {
           const label = nameForLocale(row, locale)
           const active = copiedId === row.id
           return (
-            <tr
+            <div
               key={row.id}
-              className="border-b border-white/[0.04] odd:bg-black/10 even:bg-transparent"
+              className={`${grid} items-center px-2 py-[0.28rem] transition-colors hover:bg-white/[0.04] sm:px-2.5 sm:py-1`}
             >
-              <td className="px-1 py-[0.15rem] text-zinc-200 sm:px-1.5 sm:py-0.5">
-                {label}
-              </td>
-              <td className="px-1 py-[0.15rem] sm:px-1.5 sm:py-0.5">
+              <span className="min-w-0 truncate text-zinc-200">{label}</span>
+              <div className="min-w-0">
                 <button
                   type="button"
                   onClick={() => void copy(row.id)}
-                  className={`w-full truncate rounded px-0.5 text-left font-mono text-orange-400/95 underline decoration-orange-500/30 decoration-dotted underline-offset-2 transition-colors hover:bg-white/5 hover:decoration-orange-400 ${
-                    active ? 'bg-emerald-500/15 text-emerald-300' : ''
+                  className={`inline-flex max-w-full truncate rounded-md border px-1.5 py-0.5 font-mono text-[10px] transition-colors sm:text-[11px] ${
+                    active
+                      ? 'border-emerald-500/50 bg-emerald-500/15 text-emerald-200'
+                      : 'border-orange-500/25 bg-orange-500/[0.08] text-orange-300 hover:border-orange-400/40 hover:bg-orange-500/15'
                   }`}
                   title={row.id}
                 >
                   {active ? t('copied') : row.id}
                 </button>
-              </td>
-              <td className="px-0 py-[0.15rem] text-right sm:px-1 sm:py-0.5">
+              </div>
+              <div className="flex justify-end">
                 <EnchantmentItemIcons items={row.items} />
-              </td>
-              <td className="px-0.5 py-[0.15rem] text-center tabular-nums text-zinc-400 sm:py-0.5">
-                {row.max}
-              </td>
-            </tr>
+              </div>
+              <span className="text-center tabular-nums text-zinc-500">{row.max}</span>
+            </div>
           )
         })}
-      </tbody>
-    </table>
+      </div>
+    </div>
   )
 
   return (
-    <section className="flex min-h-0 flex-1 flex-col gap-1 overflow-hidden">
-      <div className="shrink-0 text-center">
-        <h2 className="text-sm font-semibold tracking-tight text-sky-300 sm:text-base">
+    <section className="mx-auto flex min-h-0 w-full max-w-5xl flex-1 flex-col gap-2 overflow-hidden px-0 sm:gap-2.5">
+      <header className="shrink-0 text-center">
+        <h2 className="text-base font-semibold tracking-tight text-sky-300 sm:text-lg">
           {t('title')}
         </h2>
-        <p className="text-[10px] text-zinc-500">{t('hint')}</p>
-      </div>
-      <div className="grid min-h-0 flex-1 grid-cols-2 gap-2 overflow-hidden sm:gap-3">
-        <div className="panel min-h-0 overflow-hidden rounded-xl border border-white/[0.06] bg-[#161922]">
-          <div className="h-full overflow-hidden">{renderTable(left)}</div>
+        <p className="text-[11px] text-zinc-500">{t('hint')}</p>
+      </header>
+
+      <div className="grid min-h-0 flex-1 grid-cols-1 gap-2.5 overflow-hidden md:grid-cols-2 md:gap-3">
+        <div className="flex min-h-0 flex-col overflow-hidden rounded-xl border border-white/[0.07] bg-[#141722] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.04)]">
+          {renderBlock(left)}
         </div>
-        <div className="panel min-h-0 overflow-hidden rounded-xl border border-white/[0.06] bg-[#161922]">
-          <div className="h-full overflow-hidden">{renderTable(right)}</div>
+        <div className="flex min-h-0 flex-col overflow-hidden rounded-xl border border-white/[0.07] bg-[#141722] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.04)]">
+          {renderBlock(right)}
         </div>
       </div>
     </section>

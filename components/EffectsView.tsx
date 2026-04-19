@@ -3,6 +3,7 @@
 import { useMemo } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
 import { MINECRAFT_EFFECTS } from '@/lib/minecraft-effects'
+import { EffectGlyph } from '@/components/icons/EffectGlyphs'
 import { useCopyFeedback } from '@/hooks/useCopyFeedback'
 
 function labelForLocale(
@@ -28,36 +29,43 @@ export function EffectsView() {
   const renderColumn = (
     title: string,
     rows: typeof MINECRAFT_EFFECTS,
-    tone: 'pos' | 'neg'
+    kind: 'positive' | 'negative'
   ) => (
-    <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-xl border border-white/[0.06] bg-[#161922]">
-      <h3 className="shrink-0 border-b border-white/[0.06] bg-[#141722] px-2 py-1 text-center text-[10px] font-semibold uppercase tracking-wide text-zinc-400 sm:text-[11px]">
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-xl border border-white/[0.07] bg-[#141722] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.04)]">
+      <h3 className="shrink-0 border-b border-white/[0.07] bg-[#131722] px-3 py-1.5 text-center text-[10px] font-semibold uppercase tracking-wide text-zinc-400 sm:text-[11px]">
         {title}
       </h3>
-      <ul className="min-h-0 flex-1 space-y-0 overflow-hidden py-0.5">
+      <ul className="min-h-0 flex-1 space-y-0 overflow-hidden px-1.5 py-1 sm:px-2">
         {rows.map((row) => {
           const active = copiedId === row.id
           const nameClass =
-            tone === 'pos'
-              ? 'text-emerald-400/95'
-              : 'text-red-400/95'
+            kind === 'positive'
+              ? 'text-emerald-300/95'
+              : 'text-rose-300/95'
           return (
-            <li
-              key={row.id}
-              className="flex items-baseline justify-between gap-1 border-b border-white/[0.03] px-2 py-[0.12rem] last:border-0 sm:py-[0.2rem]"
-            >
-              <span className={`min-w-0 shrink text-[clamp(8px,1.05vmin,11px)] leading-snug ${nameClass}`}>
-                {labelForLocale(row, locale)}
-              </span>
+            <li key={row.id}>
               <button
                 type="button"
                 onClick={() => void copy(row.id)}
-                className={`shrink-0 rounded px-1 font-mono text-[clamp(8px,1.05vmin,10px)] text-amber-300/95 underline decoration-amber-500/25 decoration-dotted underline-offset-2 hover:bg-white/5 ${
-                  active ? 'bg-emerald-500/15 text-emerald-300' : ''
-                }`}
-                title={row.id}
+                className="flex w-full items-center gap-2 rounded-lg px-1.5 py-[0.28rem] text-left transition-colors hover:bg-white/[0.05] sm:gap-2.5 sm:py-1"
               >
-                {active ? t('copied') : `(${row.id})`}
+                <span className="shrink-0 opacity-95">
+                  <EffectGlyph id={row.id} kind={kind} />
+                </span>
+                <span
+                  className={`min-w-0 flex-1 truncate text-[11px] leading-snug sm:text-xs ${nameClass}`}
+                >
+                  {labelForLocale(row, locale)}
+                </span>
+                <span
+                  className={`shrink-0 rounded-md border px-1.5 py-0.5 font-mono text-[10px] sm:text-[11px] ${
+                    active
+                      ? 'border-emerald-500/50 bg-emerald-500/15 text-emerald-200'
+                      : 'border-amber-500/25 bg-amber-500/[0.07] text-amber-200/90'
+                  }`}
+                >
+                  {active ? t('copied') : row.id}
+                </span>
               </button>
             </li>
           )
@@ -67,16 +75,16 @@ export function EffectsView() {
   )
 
   return (
-    <section className="flex min-h-0 flex-1 flex-col gap-1 overflow-hidden">
-      <div className="shrink-0 text-center">
-        <h2 className="text-sm font-semibold tracking-tight text-sky-300 sm:text-base">
+    <section className="mx-auto flex min-h-0 w-full max-w-5xl flex-1 flex-col gap-2 overflow-hidden px-0 sm:gap-2.5">
+      <header className="shrink-0 text-center">
+        <h2 className="text-base font-semibold tracking-tight text-sky-300 sm:text-lg">
           {t('title')}
         </h2>
-        <p className="text-[10px] text-zinc-500">{t('hint')}</p>
-      </div>
-      <div className="grid min-h-0 flex-1 grid-cols-2 gap-2 overflow-hidden sm:gap-3">
-        {renderColumn(t('positive'), positive, 'pos')}
-        {renderColumn(t('negative'), negative, 'neg')}
+        <p className="text-[11px] text-zinc-500">{t('hint')}</p>
+      </header>
+      <div className="grid min-h-0 flex-1 grid-cols-1 gap-2.5 overflow-hidden md:grid-cols-2 md:gap-3">
+        {renderColumn(t('positive'), positive, 'positive')}
+        {renderColumn(t('negative'), negative, 'negative')}
       </div>
     </section>
   )
