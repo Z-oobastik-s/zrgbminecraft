@@ -3,6 +3,9 @@
 const basePath = process.env.BASE_PATH ?? ''
 
 const nextConfig = {
+  env: {
+    NEXT_PUBLIC_BASE_PATH: basePath,
+  },
   reactStrictMode: true,
   compress: true,
   poweredByHeader: false,

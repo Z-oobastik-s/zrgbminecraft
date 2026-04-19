@@ -3,7 +3,7 @@
 import { useMemo } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
 import { MINECRAFT_EFFECTS } from '@/lib/minecraft-effects'
-import { EffectGlyph } from '@/components/icons/EffectGlyphs'
+import { MinecraftEffectIcon } from '@/components/MinecraftEffectIcon'
 import { useCopyFeedback } from '@/hooks/useCopyFeedback'
 
 function labelForLocale(
@@ -46,7 +46,7 @@ export function EffectsView() {
           className="flex w-full items-center gap-1.5 rounded-lg px-1 py-[0.18rem] text-left transition-colors hover:bg-white/[0.05] sm:gap-2 sm:px-1.5 sm:py-0.5"
         >
           <span className="shrink-0 opacity-95">
-            <EffectGlyph id={row.id} kind={kind} />
+            <MinecraftEffectIcon id={row.id} kind={kind} />
           </span>
           <span
             className={`min-w-0 flex-1 truncate text-[10px] leading-tight sm:text-[11px] ${nameClass}`}

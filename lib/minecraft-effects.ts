@@ -52,6 +52,15 @@ export const MINECRAFT_EFFECTS: EffectRow[] = [
     names: { ru: 'Водное дыхание', en: 'Water Breathing', ua: 'Підводне дихання' },
   },
   {
+    id: 'breath_of_the_nautilus',
+    kind: 'positive',
+    names: {
+      ru: 'Дыхание наутилуса',
+      en: 'Breath of the Nautilus',
+      ua: 'Дихання наутилуса',
+    },
+  },
+  {
     id: 'invisibility',
     kind: 'positive',
     names: { ru: 'Невидимость', en: 'Invisibility', ua: 'Невидимість' },
@@ -160,6 +169,34 @@ export const MINECRAFT_EFFECTS: EffectRow[] = [
     id: 'bad_omen',
     kind: 'negative',
     names: { ru: 'Дурное знамение', en: 'Bad Omen', ua: 'Зле знамення' },
+  },
+  {
+    id: 'raid_omen',
+    kind: 'negative',
+    names: {
+      ru: 'Предвестие рейда',
+      en: 'Raid Omen',
+      ua: 'Передвісник рейду',
+    },
+  },
+  {
+    id: 'trial_omen',
+    kind: 'negative',
+    names: {
+      ru: 'Знамение испытания',
+      en: 'Trial Omen',
+      ua: 'Знамення випробування',
+    },
+  },
+  {
+    id: 'unluck',
+    kind: 'negative',
+    names: { ru: 'Неудача', en: 'Bad Luck', ua: 'Невдача' },
+  },
+  {
+    id: 'glowing',
+    kind: 'negative',
+    names: { ru: 'Свечение', en: 'Glowing', ua: 'Світіння' },
   },
   {
     id: 'infested',
