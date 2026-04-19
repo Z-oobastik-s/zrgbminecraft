@@ -6,7 +6,7 @@ export type CodeFormat =
   | 'entity_hex'
   | 'json'
   | 'bbcode'
-  /** Pass-through: no generator formatting (prefix/suffix still apply). */
+  /** Pass-through: no generator formatting. */
   | 'custom'
 
 export interface FormattingOptions {

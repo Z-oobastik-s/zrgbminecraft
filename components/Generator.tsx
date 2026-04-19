@@ -110,9 +110,6 @@ export function Generator() {
   )
   const [useRainbow, setUseRainbow] = useState(false)
   const [charsPerColor, setCharsPerColor] = useState(1)
-  const [prefix, setPrefix] = useState('')
-  const [suffix, setSuffix] = useState('')
-  const [lowercaseHex, setLowercaseHex] = useState(false)
 
   const [copied, setCopied] = useState(false)
   const [urlCopied, setUrlCopied] = useState(false)
@@ -137,7 +134,7 @@ export function Generator() {
 
   useEffect(() => {
     setHexDraftByIndex({})
-  }, [lowercaseHex, gradientColors.length])
+  }, [gradientColors.length])
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -157,8 +154,6 @@ export function Generator() {
     (fieldId: string, rawValue: string, path: string) => {
       setYamlLinkedFieldId(fieldId)
       setYamlLinkedPath(path)
-      setPrefix('')
-      setSuffix('')
       setInputText(
         format === 'custom' ? rawValue : stripToRgbPlainInput(rawValue)
       )
@@ -188,9 +183,6 @@ export function Generator() {
     setGradientColors(gc)
     setUseRainbow(p.useRainbow)
     setCharsPerColor(Math.max(1, p.charsPerColor ?? 1))
-    setPrefix(p.prefix ?? '')
-    setSuffix(p.suffix ?? '')
-    setLowercaseHex(!!p.lowercaseHex)
   }
 
   const solidColor = useMemo(() => {
@@ -210,7 +202,7 @@ export function Generator() {
         inputText,
         format,
         formatting,
-        lowercaseHex
+        false
       )
     }
 
@@ -221,7 +213,7 @@ export function Generator() {
         format,
         formatting,
         charsPerColor,
-        lowercaseHex
+        false
       )
     }
 
@@ -231,7 +223,7 @@ export function Generator() {
         solidColor,
         format,
         formatting,
-        lowercaseHex
+        false
       )
     }
 
@@ -245,13 +237,9 @@ export function Generator() {
     isGradientMode,
     useRainbow,
     charsPerColor,
-    lowercaseHex,
   ])
 
-  const outputText = useMemo(
-    () => (outputCore ? `${prefix}${outputCore}${suffix}` : ''),
-    [outputCore, prefix, suffix]
-  )
+  const outputText = useMemo(() => outputCore, [outputCore])
 
   const previewSegments = useMemo(
     () =>
@@ -323,9 +311,9 @@ export function Generator() {
       gradientColors,
       useRainbow,
       charsPerColor,
-      prefix,
-      suffix,
-      lowercaseHex,
+      prefix: '',
+      suffix: '',
+      lowercaseHex: false,
     }
     const base =
       typeof window !== 'undefined'
@@ -367,9 +355,6 @@ export function Generator() {
     gradientColors,
     useRainbow,
     charsPerColor,
-    prefix,
-    suffix,
-    lowercaseHex,
   ])
 
   const handleRandom = useCallback(() => {
@@ -679,7 +664,7 @@ export function Generator() {
                   value={
                     hexDraftByIndex[idx] !== undefined
                       ? hexDraftByIndex[idx]!
-                      : `#${rgbToHexString(c, lowercaseHex)}`
+                      : `#${rgbToHexString(c)}`
                   }
                   onChange={(e) => {
                     const v = e.target.value
@@ -750,39 +735,6 @@ export function Generator() {
               </option>
             ))}
           </select>
-
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <label className="mb-0.5 block text-[10px] uppercase text-zinc-500">
-                {t('prefix')}
-              </label>
-              <input
-                value={prefix}
-                onChange={(e) => setPrefix(e.target.value)}
-                className="w-full rounded border border-white/10 bg-[#0d0f14] px-2 py-1 font-mono text-[11px] text-zinc-200 outline-none focus:border-sky-500/50"
-              />
-            </div>
-            <div>
-              <label className="mb-0.5 block text-[10px] uppercase text-zinc-500">
-                {t('suffix')}
-              </label>
-              <input
-                value={suffix}
-                onChange={(e) => setSuffix(e.target.value)}
-                className="w-full rounded border border-white/10 bg-[#0d0f14] px-2 py-1 font-mono text-[11px] text-zinc-200 outline-none focus:border-sky-500/50"
-              />
-            </div>
-          </div>
-
-          <label className="flex cursor-pointer items-center gap-2 text-[11px] text-zinc-400">
-            <input
-              type="checkbox"
-              checked={lowercaseHex}
-              onChange={(e) => setLowercaseHex(e.target.checked)}
-              className="rounded border-white/20 bg-[#0d0f14] text-sky-500"
-            />
-            {t('lowercaseHex')}
-          </label>
 
           <div className="relative z-0 min-h-[6rem] flex-1">
             <textarea
