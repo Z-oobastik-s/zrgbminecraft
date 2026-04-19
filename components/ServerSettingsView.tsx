@@ -126,7 +126,7 @@ function toYaml(value: unknown, depth = 0): string[] {
 
 export function ServerSettingsView() {
   const [query, setQuery] = useState('')
-  const [fileFilter, setFileFilter] = useState<ServerConfigFile | 'all'>('all')
+  const [selectedFile, setSelectedFile] = useState<ServerConfigFile>('server.properties')
   const initialValues = useMemo<ValueMap>(() => {
     const entries = SERVER_SETTINGS.map((s) => [s.id, s.value] as const)
     return Object.fromEntries(entries)
@@ -142,7 +142,7 @@ export function ServerSettingsView() {
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
     return SERVER_SETTINGS.filter((s) => {
-      const fileOk = fileFilter === 'all' || s.file === fileFilter
+      const fileOk = s.file === selectedFile
       if (!fileOk) return false
       if (!q) return true
       return (
@@ -151,7 +151,7 @@ export function ServerSettingsView() {
         s.description.toLowerCase().includes(q)
       )
     })
-  }, [query, fileFilter])
+  }, [query, selectedFile])
 
   const exports = useMemo(() => {
     const out: Record<ServerConfigFile, string> = {
@@ -195,16 +195,6 @@ export function ServerSettingsView() {
     return out
   }, [rawFiles, values])
 
-  const byFile = useMemo(() => {
-    const grouped = new Map<ServerConfigFile, typeof filtered>()
-    for (const item of filtered) {
-      const arr = grouped.get(item.file) ?? []
-      arr.push(item)
-      grouped.set(item.file, arr)
-    }
-    return grouped
-  }, [filtered])
-
   const handlePickFileFor = (file: ServerConfigFile) => {
     uploadFileRef.current = file
     fileInputRef.current?.click()
@@ -225,7 +215,7 @@ export function ServerSettingsView() {
       } else {
         const doc = parseDocument(text)
         for (const row of fileRows) {
-          const raw = doc.getIn(pathSegments(row.keyPath), true)
+          const raw = doc.getIn(pathSegments(row.keyPath))
           if (raw !== undefined) patchValues[row.id] = castByType(raw, row.type)
         }
       }
@@ -250,27 +240,34 @@ export function ServerSettingsView() {
         </p>
       </div>
 
-      <div className="grid min-h-0 flex-1 grid-cols-1 gap-2 xl:grid-cols-[1.35fr_1fr]">
-        <div className="flex min-h-0 flex-col gap-2 overflow-hidden rounded-xl border border-white/[0.08] bg-[#141722] p-3">
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-white/[0.08] bg-[#141722] p-3">
+        <div className="grid shrink-0 grid-cols-1 gap-2 border-b border-white/[0.08] pb-3 xl:grid-cols-[1fr_auto_auto]">
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Поиск параметра: motd, anti-xray, max-players..."
+            className="min-w-[18rem] rounded-lg border border-white/10 bg-[#0d0f14] px-3 py-2 text-xs text-zinc-200 outline-none focus:border-sky-500/60"
+          />
+          <select
+            value={selectedFile}
+            onChange={(e) => setSelectedFile(e.target.value as ServerConfigFile)}
+            className="rounded-lg border border-white/10 bg-[#0d0f14] px-2 py-2 text-xs text-zinc-200 outline-none focus:border-sky-500/60"
+          >
+            {CONFIG_FILE_ORDER.map((f) => (
+              <option key={f} value={f}>
+                {fileDisplayName(f)}
+              </option>
+            ))}
+          </select>
+          <button
+            type="button"
+            onClick={() => handlePickFileFor(selectedFile)}
+            className="inline-flex items-center justify-center gap-1 rounded border border-white/15 bg-black/30 px-3 py-2 text-[12px] text-zinc-200 hover:bg-white/10"
+          >
+            <Upload className="h-3.5 w-3.5" />
+            Загрузить файл
+          </button>
           <header className="flex flex-wrap items-center gap-2">
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Поиск параметра: motd, anti-xray, max-players..."
-              className="min-w-[18rem] flex-1 rounded-lg border border-white/10 bg-[#0d0f14] px-3 py-2 text-xs text-zinc-200 outline-none focus:border-sky-500/60"
-            />
-            <select
-              value={fileFilter}
-              onChange={(e) => setFileFilter(e.target.value as ServerConfigFile | 'all')}
-              className="rounded-lg border border-white/10 bg-[#0d0f14] px-2 py-2 text-xs text-zinc-200 outline-none focus:border-sky-500/60"
-            >
-              <option value="all">Все файлы</option>
-              {CONFIG_FILE_ORDER.map((f) => (
-                <option key={f} value={f}>
-                  {fileDisplayName(f)}
-                </option>
-              ))}
-            </select>
             <input
               ref={fileInputRef}
               type="file"
@@ -283,145 +280,117 @@ export function ServerSettingsView() {
               }}
             />
           </header>
-
-          <div className="min-h-0 flex-1 space-y-3 overflow-y-auto pr-1">
-            {CONFIG_FILE_ORDER.map((file) => {
-              const rows = byFile.get(file) ?? []
-              if (rows.length === 0) return null
-              return (
-                <div key={file} className="rounded-lg border border-white/[0.07] bg-black/20 p-2.5">
-                  <div className="mb-2 flex items-center justify-between gap-2">
-                    <h3 className="text-[11px] font-semibold uppercase tracking-wide text-zinc-400">
-                      {fileDisplayName(file)}
-                    </h3>
-                    <button
-                      type="button"
-                      onClick={() => handlePickFileFor(file)}
-                      className="inline-flex items-center gap-1 rounded border border-white/15 bg-black/30 px-2 py-1 text-[11px] text-zinc-200 hover:bg-white/10"
-                    >
-                      <Upload className="h-3 w-3" />
-                      Загрузить файл
-                    </button>
-                  </div>
-                  {rawFiles[file] ? (
-                    <p className="mb-2 text-[10px] text-emerald-300/90">
-                      Файл загружен - изменения применяются к реальному содержимому.
-                    </p>
-                  ) : (
-                    <p className="mb-2 text-[10px] text-zinc-500">
-                      Можно работать как с шаблоном или загрузить ваш файл для точного редактирования.
-                    </p>
-                  )}
-                  {parseErrors[file] ? (
-                    <p className="mb-2 rounded border border-red-500/30 bg-red-900/30 px-2 py-1 text-[10px] text-red-200">
-                      Ошибка чтения: {parseErrors[file]}
-                    </p>
-                  ) : null}
-                  <div className="space-y-2">
-                    {rows.map((row) => {
-                      const current = values[row.id]
-                      return (
-                        <label
-                          key={row.id}
-                          className="flex flex-col gap-1 rounded-md border border-white/[0.06] bg-[#0f1219] p-2"
-                        >
-                          <span className="text-[12px] font-medium text-zinc-100">{row.label}</span>
-                          <span className="font-mono text-[10px] text-zinc-500">{row.keyPath}</span>
-                          {row.type === 'boolean' ? (
-                            <input
-                              type="checkbox"
-                              checked={Boolean(current)}
-                              onChange={(e) =>
-                                setValues((prev) => ({ ...prev, [row.id]: e.target.checked }))
-                              }
-                              className="mt-1 h-4 w-4 rounded border-white/20 bg-[#0d0f14] text-sky-500"
-                            />
-                          ) : row.type === 'select' ? (
-                            <select
-                              value={String(current)}
-                              onChange={(e) =>
-                                setValues((prev) => ({ ...prev, [row.id]: e.target.value }))
-                              }
-                              className="rounded border border-white/10 bg-[#0d0f14] px-2 py-1.5 text-xs text-zinc-200 outline-none focus:border-sky-500/60"
-                            >
-                              {row.options?.map((o) => (
-                                <option key={o} value={o}>
-                                  {o}
-                                </option>
-                              ))}
-                            </select>
-                          ) : row.type === 'number' ? (
-                            <input
-                              type="number"
-                              value={Number(current)}
-                              onChange={(e) =>
-                                setValues((prev) => ({ ...prev, [row.id]: Number(e.target.value) }))
-                              }
-                              className="rounded border border-white/10 bg-[#0d0f14] px-2 py-1.5 text-xs text-zinc-200 outline-none focus:border-sky-500/60"
-                            />
-                          ) : (
-                            <input
-                              type="text"
-                              value={String(current)}
-                              onChange={(e) =>
-                                setValues((prev) => ({ ...prev, [row.id]: e.target.value }))
-                              }
-                              className="rounded border border-white/10 bg-[#0d0f14] px-2 py-1.5 text-xs text-zinc-200 outline-none focus:border-sky-500/60"
-                            />
-                          )}
-                          <span className="text-[11px] text-zinc-400">{row.description}</span>
-                        </label>
-                      )
-                    })}
-                  </div>
-                </div>
-              )
-            })}
-          </div>
         </div>
 
-        <div className="flex min-h-0 flex-col gap-2 overflow-hidden rounded-xl border border-white/[0.08] bg-[#141722] p-3">
-          <h3 className="inline-flex items-center gap-2 text-sm font-semibold text-sky-200">
-            <ShieldCheck className="h-4 w-4" />
-            Готовые блоки для вставки в конфиг
-          </h3>
-          <div className="min-h-0 flex-1 space-y-2 overflow-y-auto pr-1">
-            {CONFIG_FILE_ORDER.map((file) => {
-              const text = exports[file]
-              const active = copiedFile === file && copiedId === text
-              return (
-                <article key={file} className="rounded-lg border border-white/[0.07] bg-black/20 p-2">
-                  <div className="mb-2 flex items-center justify-between gap-2">
-                    <span className="font-mono text-[11px] text-zinc-300">{file}</span>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setCopiedFile(file)
-                        void copy(text)
-                      }}
-                      className="inline-flex items-center gap-1 rounded border border-white/15 bg-black/30 px-2 py-1 text-[11px] text-zinc-200 hover:bg-white/10"
-                    >
-                      <Copy className="h-3 w-3" />
-                      {active ? 'Скопировано' : 'Копировать'}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => downloadText(file, text)}
-                      className="inline-flex items-center gap-1 rounded border border-white/15 bg-black/30 px-2 py-1 text-[11px] text-zinc-200 hover:bg-white/10"
-                    >
-                      <Download className="h-3 w-3" />
-                      Скачать
-                    </button>
-                  </div>
-                  <textarea
-                    value={text}
-                    readOnly
-                    spellCheck={false}
-                    className="h-36 w-full resize-y rounded border border-white/10 bg-[#0d0f14] px-2 py-1.5 font-mono text-[10px] leading-relaxed text-zinc-300 outline-none"
-                  />
-                </article>
-              )
-            })}
+        <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 pt-3 xl:grid-cols-[1.25fr_1fr]">
+          <div className="min-h-0 overflow-y-auto pr-1">
+            {rawFiles[selectedFile] ? (
+              <p className="mb-2 text-[10px] text-emerald-300/90">
+                Файл загружен - изменения применяются к реальному содержимому.
+              </p>
+            ) : (
+              <p className="mb-2 text-[10px] text-zinc-500">
+                Можно работать как с шаблоном или загрузить ваш файл для точного редактирования.
+              </p>
+            )}
+            {parseErrors[selectedFile] ? (
+              <p className="mb-2 rounded border border-red-500/30 bg-red-900/30 px-2 py-1 text-[10px] text-red-200">
+                Ошибка чтения: {parseErrors[selectedFile]}
+              </p>
+            ) : null}
+            <div className="space-y-1">
+              {filtered.map((row) => {
+                const current = values[row.id]
+                return (
+                  <label
+                    key={row.id}
+                    className="flex flex-col gap-1 border-b border-white/[0.06] py-2 last:border-b-0"
+                  >
+                    <span className="text-[12px] font-medium text-zinc-100">{row.label}</span>
+                    <span className="font-mono text-[10px] text-zinc-500">{row.keyPath}</span>
+                    {row.type === 'boolean' ? (
+                      <input
+                        type="checkbox"
+                        checked={Boolean(current)}
+                        onChange={(e) =>
+                          setValues((prev) => ({ ...prev, [row.id]: e.target.checked }))
+                        }
+                        className="mt-1 h-4 w-4 rounded border-white/20 bg-[#0d0f14] text-sky-500"
+                      />
+                    ) : row.type === 'select' ? (
+                      <select
+                        value={String(current)}
+                        onChange={(e) =>
+                          setValues((prev) => ({ ...prev, [row.id]: e.target.value }))
+                        }
+                        className="rounded border border-white/10 bg-[#0d0f14] px-2 py-1.5 text-xs text-zinc-200 outline-none focus:border-sky-500/60"
+                      >
+                        {row.options?.map((o) => (
+                          <option key={o} value={o}>
+                            {o}
+                          </option>
+                        ))}
+                      </select>
+                    ) : row.type === 'number' ? (
+                      <input
+                        type="number"
+                        value={Number(current)}
+                        onChange={(e) =>
+                          setValues((prev) => ({ ...prev, [row.id]: Number(e.target.value) }))
+                        }
+                        className="rounded border border-white/10 bg-[#0d0f14] px-2 py-1.5 text-xs text-zinc-200 outline-none focus:border-sky-500/60"
+                      />
+                    ) : (
+                      <input
+                        type="text"
+                        value={String(current)}
+                        onChange={(e) =>
+                          setValues((prev) => ({ ...prev, [row.id]: e.target.value }))
+                        }
+                        className="rounded border border-white/10 bg-[#0d0f14] px-2 py-1.5 text-xs text-zinc-200 outline-none focus:border-sky-500/60"
+                      />
+                    )}
+                    <span className="text-[11px] text-zinc-400">{row.description}</span>
+                  </label>
+                )
+              })}
+            </div>
+          </div>
+
+          <div className="flex min-h-0 flex-col rounded-lg border border-white/[0.07] bg-black/20 p-2">
+            <h3 className="mb-2 inline-flex items-center gap-2 text-sm font-semibold text-sky-200">
+              <ShieldCheck className="h-4 w-4" />
+              {selectedFile}
+            </h3>
+            <div className="mb-2 flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setCopiedFile(selectedFile)
+                  void copy(exports[selectedFile])
+                }}
+                className="inline-flex items-center gap-1 rounded border border-white/15 bg-black/30 px-2 py-1 text-[11px] text-zinc-200 hover:bg-white/10"
+              >
+                <Copy className="h-3 w-3" />
+                {copiedFile === selectedFile && copiedId === exports[selectedFile]
+                  ? 'Скопировано'
+                  : 'Копировать'}
+              </button>
+              <button
+                type="button"
+                onClick={() => downloadText(selectedFile, exports[selectedFile])}
+                className="inline-flex items-center gap-1 rounded border border-white/15 bg-black/30 px-2 py-1 text-[11px] text-zinc-200 hover:bg-white/10"
+              >
+                <Download className="h-3 w-3" />
+                Скачать
+              </button>
+            </div>
+            <textarea
+              value={exports[selectedFile]}
+              readOnly
+              spellCheck={false}
+              className="min-h-0 flex-1 resize-y rounded border border-white/10 bg-[#0d0f14] px-2 py-1.5 font-mono text-[10px] leading-relaxed text-zinc-300 outline-none"
+            />
           </div>
         </div>
       </div>
