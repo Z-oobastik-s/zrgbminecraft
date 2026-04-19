@@ -21,7 +21,7 @@
   },
   "effectsPage": {
     "title": "Minecraft effects",
-    "hint": "Click an ID in parentheses to copy",
+    "hint": "Click a row or the ID tag to copy",
     "positive": "Beneficial",
     "negative": "Harmful",
     "copied": "OK"
