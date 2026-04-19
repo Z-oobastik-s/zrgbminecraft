@@ -13,6 +13,10 @@ const mcPixel = Press_Start_2P({
   variable: '--font-pixel',
 })
 
+// GitHub Pages: BASE_PATH=/repo — без префикса /icon.png уходит на github.io/icon.png (404).
+const basePath = process.env.BASE_PATH ?? ''
+const faviconUrl = `${basePath}/icon.png`
+
 export const metadata: Metadata = {
   title: 'RGB Minecraft - Text Generator',
   description: 'Powerful RGB text generator for Minecraft plugins and chat',
@@ -20,7 +24,7 @@ export const metadata: Metadata = {
   authors: [{ name: 'Zoobastiks' }],
   creator: 'Zoobastiks',
   icons: {
-    icon: [{ url: '/icon.png', sizes: '64x64', type: 'image/png' }],
+    icon: [{ url: faviconUrl, sizes: '64x64', type: 'image/png' }],
   },
   openGraph: {
     title: 'RGB Minecraft - Text Generator',
