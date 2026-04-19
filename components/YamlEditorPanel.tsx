@@ -16,6 +16,8 @@ import {
   parseYamlDiagnostics,
   type YamlStringField,
 } from '@/lib/yaml-editable'
+import { stripToRgbPlainInput } from '@/lib/strip-minecraft-codes'
+import type { CodeFormat } from '@/lib/rgb-generator'
 
 const PAGE_SIZE = 20
 
@@ -23,10 +25,14 @@ export type YamlEditorPanelProps = {
   linkedFieldId?: string | null
   /** When set, this string is written into the linked YAML field (generator output). */
   generatorSyncedOutput?: string | null
+  /** Current code format (refresh preview when it changes while a field is linked). */
+  codeFormat?: CodeFormat
   /** User focused a field: load plain text into the main RGB input. */
   onLinkField?: (fieldId: string, rawValue: string, path: string) => void
   /** User edited the linked field directly: sync plain text back to the preview. */
   onLinkedFieldRawEdit?: (rawValue: string) => void
+  /** Set main preview text when format changes (avoids stacked tags after format / YAML toggles). */
+  onApplyLinkedPreviewInput?: (text: string) => void
   /** New file loaded or YAML reset: clear link in parent. */
   onYamlEnvironmentReset?: () => void
 }
@@ -34,12 +40,15 @@ export type YamlEditorPanelProps = {
 export function YamlEditorPanel({
   linkedFieldId = null,
   generatorSyncedOutput = null,
+  codeFormat = 'ampersand',
   onLinkField,
   onLinkedFieldRawEdit,
+  onApplyLinkedPreviewInput,
   onYamlEnvironmentReset,
 }: YamlEditorPanelProps) {
   const t = useTranslations('generator')
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const prevCodeFormatRef = useRef<CodeFormat | null>(null)
 
   const [raw, setRaw] = useState('')
   const [fileName, setFileName] = useState('')
@@ -121,6 +130,30 @@ export function YamlEditorPanel({
       return { ...prev, [linkedFieldId]: generatorSyncedOutput }
     })
   }, [generatorSyncedOutput, linkedFieldId])
+
+  useEffect(() => {
+    if (!onApplyLinkedPreviewInput) return
+    if (prevCodeFormatRef.current === null) {
+      prevCodeFormatRef.current = codeFormat
+      return
+    }
+    if (prevCodeFormatRef.current === codeFormat) return
+    prevCodeFormatRef.current = codeFormat
+    if (!linkedFieldId) return
+    const raw =
+      valuesById[linkedFieldId] ??
+      fields.find((f) => f.id === linkedFieldId)?.value ??
+      ''
+    const next =
+      codeFormat === 'custom' ? raw : stripToRgbPlainInput(raw)
+    onApplyLinkedPreviewInput(next)
+  }, [
+    codeFormat,
+    linkedFieldId,
+    valuesById,
+    fields,
+    onApplyLinkedPreviewInput,
+  ])
 
   const download = useCallback(() => {
     if (!raw || !fields.length) return

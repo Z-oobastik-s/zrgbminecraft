@@ -12,8 +12,6 @@ import {
   Copy,
   Check,
   Shuffle,
-  Palette,
-  X,
   Bold,
   Italic,
   Underline,
@@ -39,7 +37,6 @@ import {
   normalizeCodeFormat,
 } from '@/lib/rgb-generator'
 import { stripToRgbPlainInput } from '@/lib/strip-minecraft-codes'
-import { ColorPalette } from './ColorPalette'
 import { YamlEditorPanel } from './YamlEditorPanel'
 
 const HASH_PREFIX = 's='
@@ -118,7 +115,10 @@ export function Generator() {
   const [lowercaseHex, setLowercaseHex] = useState(false)
 
   const [copied, setCopied] = useState(false)
-  const [showPalette, setShowPalette] = useState(false)
+  /** Lets user type partial hex; commit when valid 6-digit. */
+  const [hexDraftByIndex, setHexDraftByIndex] = useState<Record<number, string>>(
+    {}
+  )
   const [scrollTop, setScrollTop] = useState(0)
   const [scrollLeft, setScrollLeft] = useState(0)
   const [yamlLinkedFieldId, setYamlLinkedFieldId] = useState<string | null>(
@@ -133,6 +133,10 @@ export function Generator() {
     },
     []
   )
+
+  useEffect(() => {
+    setHexDraftByIndex({})
+  }, [lowercaseHex, gradientColors.length])
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -169,6 +173,10 @@ export function Generator() {
     },
     [format]
   )
+
+  const applyLinkedPreviewInput = useCallback((text: string) => {
+    setInputText(text)
+  }, [])
 
   const applyPayload = (p: PresetPayload & { selectedColor?: RGBColor | null; useGradient?: boolean }) => {
     setInputText(p.inputText)
@@ -345,12 +353,6 @@ export function Generator() {
     setFormatting((prev) => ({ ...prev, [key]: !prev[key] }))
   }, [])
 
-  const handleColorSelect = useCallback((color: RGBColor) => {
-    setGradientColors([color])
-    setUseRainbow(false)
-    setShowPalette(false)
-  }, [])
-
   const toggleRainbow = useCallback(() => {
     setUseRainbow((r) => !r)
   }, [])
@@ -369,6 +371,11 @@ export function Generator() {
   const updateColorHex = useCallback((index: number, hex: string) => {
     const rgb = hexToRgb(hex)
     if (!rgb) return
+    setHexDraftByIndex((prev) => {
+      const next = { ...prev }
+      delete next[index]
+      return next
+    })
     setGradientColors((prev) => {
       const n = [...prev]
       n[index] = rgb
@@ -584,14 +591,6 @@ export function Generator() {
           <div className="flex flex-wrap gap-1">
             <button
               type="button"
-              onClick={() => setShowPalette(true)}
-              className="inline-flex items-center gap-1 rounded-md border border-white/10 bg-black/25 px-2 py-1 text-[11px] text-zinc-300 hover:bg-white/10"
-            >
-              <Palette className="h-3 w-3" />
-              {t('colorPalette')}
-            </button>
-            <button
-              type="button"
               onClick={toggleRainbow}
               className={`rounded-md px-2 py-1 text-[11px] ${
                 useRainbow
@@ -645,14 +644,50 @@ export function Generator() {
                   type="color"
                   value={`#${rgbToHexString(c)}`}
                   onChange={(e) => updateColorHex(idx, e.target.value)}
-                  className="h-9 w-10 cursor-pointer rounded border border-white/10 bg-transparent p-0"
+                  className="h-9 w-10 shrink-0 cursor-pointer rounded border border-white/10 bg-transparent p-0"
                 />
                 <input
                   type="text"
-                  value={`#${rgbToHexString(c, lowercaseHex)}`}
-                  onChange={(e) => updateColorHex(idx, e.target.value)}
-                  className="min-w-0 flex-1 rounded border border-white/10 bg-[#0d0f14] px-2 py-1 font-mono text-[11px] text-zinc-200 outline-none focus:border-sky-500/50"
+                  value={
+                    hexDraftByIndex[idx] !== undefined
+                      ? hexDraftByIndex[idx]!
+                      : `#${rgbToHexString(c, lowercaseHex)}`
+                  }
+                  onChange={(e) => {
+                    const v = e.target.value
+                    setHexDraftByIndex((prev) => ({ ...prev, [idx]: v }))
+                    const rgb = hexToRgb(v)
+                    if (rgb) {
+                      setGradientColors((prev) => {
+                        const n = [...prev]
+                        n[idx] = rgb
+                        return n
+                      })
+                      setUseRainbow(false)
+                    }
+                  }}
+                  onBlur={(e) => {
+                    const v = e.target.value
+                    const rgb = hexToRgb(v)
+                    setHexDraftByIndex((prev) => {
+                      if (!(idx in prev)) return prev
+                      const next = { ...prev }
+                      delete next[idx]
+                      return next
+                    })
+                    if (rgb) {
+                      setGradientColors((prev) => {
+                        const n = [...prev]
+                        n[idx] = rgb
+                        return n
+                      })
+                      setUseRainbow(false)
+                    }
+                  }}
+                  className="relative z-10 min-w-0 flex-1 rounded border border-white/10 bg-[#0d0f14] px-2 py-1 font-mono text-[11px] text-zinc-200 outline-none focus:border-sky-500/50"
                   spellCheck={false}
+                  autoComplete="off"
+                  aria-label={t('hexInputAria')}
                 />
                 <button
                   type="button"
@@ -763,34 +798,13 @@ export function Generator() {
           generatorSyncedOutput={
             yamlLinkedFieldId ? outputText : null
           }
+          codeFormat={format}
           onLinkField={handleYamlLinkField}
           onLinkedFieldRawEdit={handleYamlLinkedRawEdit}
+          onApplyLinkedPreviewInput={applyLinkedPreviewInput}
           onYamlEnvironmentReset={clearYamlLink}
         />
       </section>
-
-      {showPalette && (
-        <div
-          className="fixed inset-0 z-[200] flex items-center justify-center bg-black/75 p-3"
-          role="dialog"
-          aria-modal="true"
-        >
-          <div
-            className="relative max-h-[88vh] w-full max-w-lg overflow-y-auto rounded-xl border border-white/10 bg-[#161922] p-3 shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <button
-              type="button"
-              className="absolute right-2 top-2 rounded-md p-1 text-zinc-400 hover:bg-white/10 hover:text-white"
-              onClick={() => setShowPalette(false)}
-              aria-label="Close"
-            >
-              <X className="h-5 w-5" />
-            </button>
-            <ColorPalette onColorSelect={handleColorSelect} />
-          </div>
-        </div>
-      )}
     </div>
   )
 }

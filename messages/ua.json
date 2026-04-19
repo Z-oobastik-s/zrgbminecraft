@@ -40,7 +40,8 @@
     "copyUrl": "Посилання",
     "reverseColors": "Розвернути кольори",
     "shuffleColors": "Перемішати",
-    "copyColors": "Копіювати кольори (JSON)"
+    "copyColors": "Копіювати кольори (JSON)",
+    "hexInputAria": "HEX колір #rrggbb"
   },
   "formats": {
     "label": "Формат:",

@@ -40,7 +40,8 @@
     "copyUrl": "Copy link",
     "reverseColors": "Reverse colors",
     "shuffleColors": "Shuffle",
-    "copyColors": "Copy colors (JSON)"
+    "copyColors": "Copy colors (JSON)",
+    "hexInputAria": "HEX color #rrggbb"
   },
   "formats": {
     "label": "Format:",
