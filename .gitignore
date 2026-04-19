@@ -1,0 +1,31 @@
+# Dependencies & build
+node_modules/
+.next/
+out/
+dist/
+
+# Env / secrets
+.env
+.env.*
+!.env.example
+github-token.txt
+
+# OS / IDE / Cursor (only local)
+.DS_Store
+Thumbs.db
+.idea/
+.cursor/
+*.swp
+*.swo
+
+# Local notes (do not publish)
+GITHUB_PAGES_SETUP.md
+
+# Logs
+*.log
+npm-debug.log*
+
+# Локальные / опасные скрипты (не пушим)
+reset_repo.bat
+deploy.bat
+start.bat
