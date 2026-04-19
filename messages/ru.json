@@ -9,7 +9,8 @@
   "nav": {
     "generator": "Генератор",
     "enchant": "Зачарования",
-    "effects": "Эффекты"
+    "effects": "Эффекты",
+    "server": "Сервер"
   },
   "enchantPage": {
     "title": "Зачарования Minecraft",

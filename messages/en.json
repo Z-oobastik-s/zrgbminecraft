@@ -9,7 +9,8 @@
   "nav": {
     "generator": "Generator",
     "enchant": "Enchantments",
-    "effects": "Effects"
+    "effects": "Effects",
+    "server": "Server"
   },
   "enchantPage": {
     "title": "Minecraft enchantments",

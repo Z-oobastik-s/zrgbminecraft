@@ -182,3 +182,16 @@ export const EFFECTS_KEYWORDS: string[] = [
   'все эффекты майнкрафт для команды',
   'effect give список id',
 ]
+
+export const SERVER_KEYWORDS: string[] = [
+  'minecraft server settings',
+  'server.properties editor',
+  'paper.yml settings',
+  'spigot.yml settings',
+  'bukkit.yml settings',
+  'minecraft server admin panel',
+  'настройки сервера minecraft',
+  'редактор server.properties',
+  'панель администрации майнкрафт',
+  'paper global yml',
+]
