@@ -21,7 +21,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="ru" className="dark">
-      <body className="min-h-screen bg-gradient-to-br from-dark-50 via-dark-50 to-dark-100">
+      <body className="h-[100dvh] overflow-hidden bg-gradient-to-br from-dark-50 via-dark-50 to-dark-100">
         {children}
       </body>
     </html>

@@ -13,23 +13,23 @@ export function Header({ currentLocale, onLocaleChange }: HeaderProps) {
   const t = useTranslations('common')
 
   return (
-    <header className="glass-effect sticky top-0 z-50 border-b border-dark-200/50">
-      <div className="container mx-auto px-4 py-4 max-w-7xl">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Sparkles className="w-8 h-8 text-primary-400 animate-pulse-slow" />
-            <div>
-              <h1 className="text-2xl font-bold gradient-text">
-                {t('title')}
-              </h1>
-              <p className="text-sm text-dark-500">{t('subtitle')}</p>
-            </div>
+    <header className="z-50 shrink-0 border-b border-dark-200/50 bg-dark-50/90 backdrop-blur-sm">
+      <div className="mx-auto flex max-w-7xl items-center justify-between gap-2 px-2 py-1.5 sm:px-3">
+        <div className="flex min-w-0 items-center gap-2">
+          <Sparkles className="h-6 w-6 shrink-0 text-primary-400" />
+          <div className="min-w-0">
+            <h1 className="truncate text-base font-bold leading-tight gradient-text sm:text-lg">
+              {t('title')}
+            </h1>
+            <p className="truncate text-[10px] text-dark-500 sm:text-xs">
+              {t('subtitle')}
+            </p>
           </div>
-          <div className="flex items-center gap-4">
-            <LanguageSwitcher currentLocale={currentLocale} onLocaleChange={onLocaleChange} />
-            <div className="text-xs text-dark-500">
-              {t('author')} © {t('year')}
-            </div>
+        </div>
+        <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+          <LanguageSwitcher currentLocale={currentLocale} onLocaleChange={onLocaleChange} />
+          <div className="hidden text-[10px] text-dark-500 sm:block sm:text-xs">
+            {t('author')} © {t('year')}
           </div>
         </div>
       </div>

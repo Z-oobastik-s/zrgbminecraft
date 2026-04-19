@@ -2,10 +2,9 @@
 
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react'
 import { useTranslations } from 'next-intl'
-import { motion, AnimatePresence } from 'framer-motion'
-import { Copy, Check, Shuffle, Palette } from 'lucide-react'
+import { Copy, Check, Shuffle, Palette, X } from 'lucide-react'
+import type { CodeFormat } from '@/lib/rgb-generator'
 import {
-  CodeFormat,
   FormattingOptions,
   RGBColor,
   generateRainbowGradient,
@@ -13,7 +12,7 @@ import {
   generateRandomColor,
   generateRandomGradientColors,
   generateGradientText,
-  MINECRAFT_COLORS,
+  buildPreviewSegments,
 } from '@/lib/rgb-generator'
 import { ColorPalette } from './ColorPalette'
 import { FormatSelector } from './FormatSelector'
@@ -21,7 +20,7 @@ import { FormattingButtons } from './FormattingButtons'
 
 export function Generator() {
   const t = useTranslations('generator')
-  
+
   const [inputText, setInputText] = useState('')
   const [format, setFormat] = useState<CodeFormat>('ampersand')
   const [formatting, setFormatting] = useState<FormattingOptions>({
@@ -46,7 +45,6 @@ export function Generator() {
     []
   )
 
-  // Generate output text
   const outputText = useMemo(() => {
     if (!inputText.trim()) return ''
 
@@ -65,7 +63,18 @@ export function Generator() {
     return inputText
   }, [inputText, format, formatting, selectedColor, gradientColors, useGradient, useRainbow])
 
-  // Copy to clipboard
+  const previewSegments = useMemo(
+    () =>
+      buildPreviewSegments(
+        inputText,
+        selectedColor,
+        gradientColors,
+        useGradient,
+        useRainbow
+      ),
+    [inputText, selectedColor, gradientColors, useGradient, useRainbow]
+  )
+
   const copyToClipboard = useCallback(async () => {
     if (!outputText) return
 
@@ -82,14 +91,12 @@ export function Generator() {
     }
   }, [outputText])
 
-  // Random color handler
   const handleRandom = useCallback(() => {
     setUseRainbow(false)
     setUseGradient(false)
     setSelectedColor(null)
     setGradientColors([])
 
-    // 70% chance for single color, 30% for gradient
     if (Math.random() < 0.7) {
       setSelectedColor(generateRandomColor())
     } else {
@@ -99,7 +106,6 @@ export function Generator() {
     }
   }, [])
 
-  // Toggle formatting option
   const toggleFormatting = useCallback((key: keyof FormattingOptions) => {
     setFormatting((prev) => ({
       ...prev,
@@ -107,7 +113,6 @@ export function Generator() {
     }))
   }, [])
 
-  // Select color from palette
   const handleColorSelect = useCallback((color: RGBColor) => {
     setSelectedColor(color)
     setUseGradient(false)
@@ -116,7 +121,6 @@ export function Generator() {
     setShowPalette(false)
   }, [])
 
-  // Toggle rainbow mode
   const toggleRainbow = useCallback(() => {
     setUseRainbow(!useRainbow)
     setUseGradient(false)
@@ -124,175 +128,189 @@ export function Generator() {
     setGradientColors([])
   }, [useRainbow])
 
+  const previewClass =
+    `minecraft-preview inline text-[clamp(0.95rem,2.2vmin,1.35rem)] leading-snug tracking-wide ` +
+    `${formatting.bold ? 'font-bold ' : ''}` +
+    `${formatting.italic ? 'italic ' : ''}` +
+    `${formatting.underline ? 'underline ' : ''}` +
+    `${formatting.strikethrough ? 'line-through ' : ''}` +
+    `${formatting.obfuscated ? 'mc-obfuscated ' : ''}`
+
   return (
-    <div className="space-y-6">
-      {/* Main Generator Card */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="glass-effect rounded-2xl p-6 shadow-2xl"
-      >
-        {/* Format Selector */}
-        <div className="mb-6">
-          <FormatSelector format={format} onFormatChange={setFormat} />
-        </div>
+    <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-hidden">
+      <div className="glass-effect flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl p-2 shadow-xl sm:p-3">
+        <div className="grid min-h-0 flex-1 grid-cols-1 gap-2 lg:grid-cols-2 lg:gap-3">
+          <div className="flex min-h-0 min-w-0 flex-col gap-2 overflow-y-auto lg:overflow-hidden">
+            <div className="shrink-0">
+              <FormatSelector format={format} onFormatChange={setFormat} />
+            </div>
+            <div className="shrink-0">
+              <FormattingButtons
+                formatting={formatting}
+                onToggle={toggleFormatting}
+              />
+            </div>
+            <div className="flex shrink-0 flex-wrap items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => setShowPalette(true)}
+                className="flex items-center gap-1 rounded-md bg-dark-200 px-2 py-1 text-xs text-dark-400 hover:bg-dark-300 hover:text-white"
+              >
+                <Palette className="h-3.5 w-3.5" />
+                <span>{t('colorPalette')}</span>
+              </button>
+              <button
+                type="button"
+                onClick={toggleRainbow}
+                className={`rounded-md px-2 py-1 text-xs transition-all ${
+                  useRainbow
+                    ? 'bg-gradient-to-r from-red-500 via-green-500 to-purple-500 text-white'
+                    : 'bg-dark-200 text-dark-400 hover:bg-dark-300 hover:text-white'
+                }`}
+              >
+                <span className="mr-1">🌈</span>
+                {t('rainbow')}
+              </button>
+              <button
+                type="button"
+                onClick={handleRandom}
+                className="flex items-center gap-1 rounded-md bg-primary-500 px-2 py-1 text-xs text-white hover:bg-primary-600"
+              >
+                <Shuffle className="h-3.5 w-3.5" />
+                {t('random')}
+              </button>
+            </div>
 
-        {/* Formatting Buttons */}
-        <div className="mb-6">
-          <FormattingButtons
-            formatting={formatting}
-            onToggle={toggleFormatting}
-          />
-        </div>
-
-        {/* Input Field */}
-        <div className="mb-6">
-          <label className="block text-sm font-medium text-dark-400 mb-2">
-            {t('inputLabel')}
-          </label>
-          <textarea
-            value={inputText}
-            onChange={(e) => setInputText(e.target.value)}
-            placeholder={t('inputPlaceholder')}
-            className="w-full h-32 px-4 py-3 bg-dark-100 border border-dark-200 rounded-lg text-white placeholder-dark-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none transition-all"
-          />
-        </div>
-
-        {/* Color Controls */}
-        <div className="mb-6 flex flex-wrap items-center gap-3">
-          <button
-            onClick={() => setShowPalette(!showPalette)}
-            className="flex items-center gap-2 px-4 py-2 bg-dark-200 hover:bg-dark-300 rounded-lg text-dark-400 hover:text-white transition-all"
-          >
-            <Palette className="w-4 h-4" />
-            <span>{t('colorPalette')}</span>
-          </button>
-
-          <button
-            onClick={toggleRainbow}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${
-              useRainbow
-                ? 'bg-gradient-to-r from-red-500 via-yellow-500 via-green-500 via-blue-500 to-purple-500 text-white'
-                : 'bg-dark-200 hover:bg-dark-300 text-dark-400 hover:text-white'
-            }`}
-          >
-            <span>🌈</span>
-            <span>{t('rainbow')}</span>
-          </button>
-
-          <button
-            onClick={handleRandom}
-            className="flex items-center gap-2 px-4 py-2 bg-primary-500 hover:bg-primary-600 text-white rounded-lg transition-all"
-          >
-            <Shuffle className="w-4 h-4" />
-            <span>{t('random')}</span>
-          </button>
-        </div>
-
-        {/* Color Palette */}
-        <AnimatePresence>
-          {showPalette && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              transition={{ duration: 0.3 }}
-              className="mb-6 overflow-hidden"
-            >
-              <ColorPalette onColorSelect={handleColorSelect} />
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Selected Color Preview */}
-        {(selectedColor || gradientColors.length > 0) && (
-          <div className="mb-6 p-4 bg-dark-100 rounded-lg">
-            <div className="flex items-center gap-3 flex-wrap">
-              {selectedColor && (
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-dark-500">Color:</span>
-                  <div
-                    className="w-8 h-8 rounded border-2 border-dark-300"
-                    style={{
-                      backgroundColor: `rgb(${selectedColor.r}, ${selectedColor.g}, ${selectedColor.b})`,
-                    }}
-                  />
-                  <span className="text-sm text-dark-400">
-                    RGB({selectedColor.r}, {selectedColor.g}, {selectedColor.b})
-                  </span>
-                </div>
-              )}
-              {gradientColors.length > 0 && (
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-dark-500">Gradient:</span>
-                  <div className="flex gap-1">
-                    {gradientColors.map((color, idx) => (
-                      <div
-                        key={idx}
-                        className="w-6 h-6 rounded border border-dark-300"
+            {(selectedColor || gradientColors.length > 0) && (
+              <div className="shrink-0 rounded-md bg-dark-100/80 px-2 py-1.5">
+                <div className="flex flex-wrap items-center gap-2 text-[11px] text-dark-400">
+                  {selectedColor && (
+                    <>
+                      <span className="text-dark-500">RGB</span>
+                      <span
+                        className="inline-block h-4 w-4 rounded border border-dark-300"
                         style={{
-                          backgroundColor: `rgb(${color.r}, ${color.g}, ${color.b})`,
+                          backgroundColor: `rgb(${selectedColor.r},${selectedColor.g},${selectedColor.b})`,
                         }}
                       />
-                    ))}
-                  </div>
+                      <span>
+                        {selectedColor.r},{selectedColor.g},{selectedColor.b}
+                      </span>
+                    </>
+                  )}
+                  {gradientColors.length > 0 && (
+                    <div className="flex items-center gap-1">
+                      <span className="text-dark-500">∇</span>
+                      {gradientColors.map((color, idx) => (
+                        <span
+                          key={idx}
+                          className="inline-block h-3.5 w-3.5 rounded border border-dark-300"
+                          style={{
+                            backgroundColor: `rgb(${color.r},${color.g},${color.b})`,
+                          }}
+                        />
+                      ))}
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
+              </div>
+            )}
           </div>
-        )}
 
-        {/* Output Field */}
-        <div className="mb-6">
-          <label className="block text-sm font-medium text-dark-400 mb-2">
-            {t('outputLabel')}
-          </label>
-          <div className="relative">
-            <textarea
-              value={outputText}
-              readOnly
-              placeholder={t('outputPlaceholder')}
-              onClick={copyToClipboard}
-              className="w-full h-32 px-4 py-3 bg-dark-100 border border-dark-200 rounded-lg text-white placeholder-dark-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none transition-all cursor-pointer hover:bg-dark-200/50"
-            />
-            <button
-              onClick={copyToClipboard}
-              className="absolute top-3 right-3 p-2 bg-primary-500 hover:bg-primary-600 text-white rounded-lg transition-all flex items-center gap-2"
-            >
-              {copied ? (
-                <>
-                  <Check className="w-4 h-4" />
-                  <span className="text-sm">{t('copied')}</span>
-                </>
-              ) : (
-                <>
-                  <Copy className="w-4 h-4" />
-                  <span className="text-sm">{t('copy')}</span>
-                </>
-              )}
-            </button>
+          <div className="flex min-h-0 min-w-0 flex-col gap-2">
+            <div className="flex min-h-0 flex-1 flex-col gap-1">
+              <label className="text-[11px] font-medium uppercase tracking-wide text-dark-500">
+                {t('inputLabel')}
+              </label>
+              <textarea
+                value={inputText}
+                onChange={(e) => setInputText(e.target.value)}
+                placeholder={t('inputPlaceholder')}
+                rows={3}
+                className="min-h-[3.5rem] w-full flex-1 resize-none rounded-md border border-dark-200 bg-dark-100 px-2 py-1.5 text-sm text-white placeholder-dark-500 focus:border-transparent focus:outline-none focus:ring-1 focus:ring-primary-500"
+              />
+            </div>
+
+            <div className="flex min-h-0 flex-1 flex-col gap-1">
+              <label className="text-[11px] font-medium uppercase tracking-wide text-dark-500">
+                {t('outputLabel')}
+              </label>
+              <div className="relative min-h-[3.5rem] flex-1">
+                <textarea
+                  value={outputText}
+                  readOnly
+                  placeholder={t('outputPlaceholder')}
+                  onClick={copyToClipboard}
+                  rows={3}
+                  className="h-full min-h-[3.5rem] w-full cursor-pointer resize-none rounded-md border border-dark-200 bg-dark-100 px-2 py-1.5 pr-24 font-mono text-[11px] leading-relaxed text-dark-600 hover:bg-dark-200/40"
+                />
+                <button
+                  type="button"
+                  onClick={copyToClipboard}
+                  className="absolute right-1.5 top-1.5 flex items-center gap-1 rounded-md bg-primary-500 px-2 py-1 text-[11px] text-white hover:bg-primary-600"
+                >
+                  {copied ? (
+                    <>
+                      <Check className="h-3 w-3" />
+                      {t('copied')}
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="h-3 w-3" />
+                      {t('copy')}
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {inputText.trim() && (
+              <div className="shrink-0 rounded-md border border-dark-200 bg-dark-50/80 px-2 py-2">
+                <p className="mb-1 text-[10px] font-medium uppercase tracking-wide text-dark-500">
+                  {t('preview')}
+                </p>
+                <div className="min-h-[1.75rem] rounded bg-dark-100/90 px-2 py-1.5">
+                  <p className={previewClass}>
+                    {previewSegments.map((seg, i) => (
+                      <span
+                        key={`${i}-${seg.char}`}
+                        style={{
+                          color: `rgb(${seg.color.r},${seg.color.g},${seg.color.b})`,
+                        }}
+                      >
+                        {seg.char === ' ' ? '\u00A0' : seg.char}
+                      </span>
+                    ))}
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
         </div>
+      </div>
 
-        {/* Preview */}
-        {outputText && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3 }}
-            className="p-4 bg-dark-100 rounded-lg border border-dark-200"
+      {showPalette && (
+        <div
+          className="fixed inset-0 z-[200] flex items-center justify-center bg-black/75 p-3"
+          role="dialog"
+          aria-modal="true"
+        >
+          <div
+            className="relative max-h-[88vh] w-full max-w-lg overflow-y-auto rounded-xl border border-dark-200 bg-dark-50 p-3 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
           >
-            <p className="text-sm text-dark-500 mb-2">{t('preview')}</p>
-            <div className="p-3 bg-dark-50 rounded min-h-[60px] flex items-center">
-              <pre className="text-lg font-mono whitespace-pre-wrap break-words text-white">
-                {outputText}
-              </pre>
-            </div>
-          </motion.div>
-        )}
-      </motion.div>
+            <button
+              type="button"
+              className="absolute right-2 top-2 rounded-md p-1 text-dark-400 hover:bg-dark-200 hover:text-white"
+              onClick={() => setShowPalette(false)}
+              aria-label="Close"
+            >
+              <X className="h-5 w-5" />
+            </button>
+            <ColorPalette onColorSelect={handleColorSelect} />
+          </div>
+        </div>
+      )}
     </div>
   )
 }
-

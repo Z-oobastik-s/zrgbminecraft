@@ -125,8 +125,8 @@ export function generateRainbowGradient(
   return result.join('')
 }
 
-// HSL to RGB conversion
-function hslToRgb(h: number, s: number, l: number): RGBColor {
+// HSL to RGB conversion (exported for preview)
+export function hslToRgb(h: number, s: number, l: number): RGBColor {
   h /= 360
   s /= 100
   l /= 100
@@ -231,5 +231,62 @@ export function generateGradientText(
   })
   
   return result.join('')
+}
+
+/** In-game style preview: per-character RGB (not the code string). */
+export interface PreviewSegment {
+  char: string
+  color: RGBColor
+}
+
+export function buildPreviewSegments(
+  text: string,
+  selectedColor: RGBColor | null,
+  gradientColors: RGBColor[],
+  useGradient: boolean,
+  useRainbow: boolean
+): PreviewSegment[] {
+  if (!text) return []
+
+  const spaceColor: RGBColor = { r: 120, g: 120, b: 130 }
+  const plainColor: RGBColor = { r: 210, g: 215, b: 230 }
+
+  if (!useRainbow && !useGradient && !selectedColor) {
+    return text.split('').map((char) => ({
+      char,
+      color: char === ' ' ? spaceColor : plainColor,
+    }))
+  }
+
+  if (useRainbow) {
+    const chars = text.split('')
+    return chars.map((char, index) => {
+      if (char === ' ') return { char: ' ', color: spaceColor }
+      const hue = (index * 360) / Math.max(chars.length, 1)
+      return { char, color: hslToRgb(hue, 100, 50) }
+    })
+  }
+
+  if (useGradient && gradientColors.length > 0) {
+    const chars = text.split('')
+    return chars.map((char, index) => {
+      if (char === ' ') return { char: ' ', color: spaceColor }
+      const colorIndex = Math.floor((index / chars.length) * gradientColors.length)
+      const color = gradientColors[colorIndex] ?? gradientColors[gradientColors.length - 1]
+      return { char, color }
+    })
+  }
+
+  if (selectedColor) {
+    return text.split('').map((char) => ({
+      char,
+      color: char === ' ' ? spaceColor : selectedColor,
+    }))
+  }
+
+  return text.split('').map((char) => ({
+    char,
+    color: char === ' ' ? spaceColor : plainColor,
+  }))
 }
 

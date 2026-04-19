@@ -26,6 +26,7 @@
     "minimessage": "MiniMessage"
   },
   "formatting": {
+    "sectionTitle": "Оформление",
     "bold": "Жирный",
     "italic": "Курсив",
     "underline": "Подчеркивание",

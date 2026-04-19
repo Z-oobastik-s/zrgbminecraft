@@ -30,30 +30,31 @@ export function FormattingButtons({
 
   return (
     <div>
-      <label className="block text-sm font-medium text-dark-400 mb-3">
-        Formatting:
+      <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-dark-500">
+        {t('sectionTitle')}
       </label>
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-1">
         {buttons.map(({ key, icon: Icon, label }) => (
           <button
             key={key}
+            type="button"
             onClick={() => onToggle(key)}
-            className={`relative flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
+            className={`relative flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium transition-all duration-200 ${
               formatting[key]
-                ? 'bg-primary-500 text-white shadow-lg shadow-primary-500/50'
+                ? 'bg-primary-500 text-white shadow-md shadow-primary-500/40'
                 : 'bg-dark-200 text-dark-400 hover:bg-dark-300 hover:text-white'
             }`}
           >
             {formatting[key] && (
               <motion.div
                 layoutId={`activeFormatting-${key}`}
-                className="absolute inset-0 bg-primary-500 rounded-lg"
+                className="absolute inset-0 rounded-md bg-primary-500"
                 transition={{ type: 'spring', bounce: 0.2, duration: 0.6 }}
               />
             )}
-            <span className="relative z-10 flex items-center gap-2">
-              <Icon className="w-4 h-4" />
-              <span className="text-sm">{label}</span>
+            <span className="relative z-10 flex items-center gap-1">
+              <Icon className="h-3.5 w-3.5 shrink-0" />
+              <span className="hidden sm:inline">{label}</span>
             </span>
           </button>
         ))}

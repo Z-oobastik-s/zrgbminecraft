@@ -24,7 +24,7 @@ export default function HomePage() {
 
   if (!messages) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="flex h-[100dvh] max-h-[100dvh] items-center justify-center overflow-hidden">
         <div className="text-dark-400">Loading...</div>
       </div>
     )
@@ -32,14 +32,14 @@ export default function HomePage() {
 
   return (
     <NextIntlClientProvider messages={messages} locale={locale}>
-      <main className="min-h-screen">
+      <main className="flex h-[100dvh] max-h-[100dvh] flex-col overflow-hidden">
         <Header
           currentLocale={locale}
           onLocaleChange={(next) => {
             if (isLocale(next)) setLocale(next)
           }}
         />
-        <div className="container mx-auto px-4 py-8 max-w-7xl">
+        <div className="mx-auto flex min-h-0 w-full max-w-7xl flex-1 flex-col px-2 py-1 sm:px-3 sm:py-2">
           <Generator />
         </div>
       </main>

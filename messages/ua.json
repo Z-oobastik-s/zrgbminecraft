@@ -26,6 +26,7 @@
     "minimessage": "MiniMessage"
   },
   "formatting": {
+    "sectionTitle": "Оформлення",
     "bold": "Жирний",
     "italic": "Курсив",
     "underline": "Підкреслення",

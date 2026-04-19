@@ -67,3 +67,13 @@ body {
   letter-spacing: 1px;
 }
 
+.minecraft-preview {
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.85);
+}
+
+.mc-obfuscated {
+  filter: blur(2px);
+  user-select: none;
+}
+

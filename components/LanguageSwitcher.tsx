@@ -16,13 +16,13 @@ interface LanguageSwitcherProps {
 
 export function LanguageSwitcher({ currentLocale, onLocaleChange }: LanguageSwitcherProps) {
   return (
-    <div className="flex items-center gap-2 glass-effect rounded-lg p-1">
-      <Globe className="w-4 h-4 text-dark-500" />
+    <div className="flex items-center gap-1 glass-effect rounded-md p-0.5">
+      <Globe className="h-3.5 w-3.5 shrink-0 text-dark-500" />
       {languages.map((lang) => (
         <button
           key={lang.code}
           onClick={() => onLocaleChange(lang.code)}
-          className={`relative px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200 ${
+          className={`relative rounded px-2 py-0.5 text-xs font-medium transition-all duration-200 ${
             currentLocale === lang.code
               ? 'text-primary-400 bg-primary-400/10'
               : 'text-dark-500 hover:text-dark-400 hover:bg-dark-200/30'
