@@ -20,7 +20,6 @@ import {
   Strikethrough,
   Eye,
   Link2,
-  FileJson,
   Trash2,
   ArrowLeftRight,
   Plus,
@@ -40,8 +39,8 @@ import {
   normalizeCodeFormat,
 } from '@/lib/rgb-generator'
 import { ColorPalette } from './ColorPalette'
+import { YamlEditorPanel } from './YamlEditorPanel'
 
-const PRESETS_KEY = 'zrgb-presets-v1'
 const HASH_PREFIX = 's='
 
 type PresetPayload = {
@@ -121,10 +120,6 @@ export function Generator() {
   const [showPalette, setShowPalette] = useState(false)
   const [scrollTop, setScrollTop] = useState(0)
   const [scrollLeft, setScrollLeft] = useState(0)
-  const [importText, setImportText] = useState('')
-  const [presetName, setPresetName] = useState('')
-  const [presetList, setPresetList] = useState<string[]>([])
-
   const copyResetTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(
@@ -133,18 +128,6 @@ export function Generator() {
     },
     []
   )
-
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(PRESETS_KEY)
-      if (raw) {
-        const o = JSON.parse(raw) as Record<string, PresetPayload>
-        setPresetList(Object.keys(o).sort())
-      }
-    } catch {
-      /* ignore */
-    }
-  }, [])
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -396,78 +379,6 @@ export function Generator() {
   const bumpCharsPerColor = useCallback((d: number) => {
     setCharsPerColor((c) => Math.max(1, Math.min(24, c + d)))
   }, [])
-
-  const savePreset = useCallback(() => {
-    const name = presetName.trim()
-    if (!name) return
-    const payload: PresetPayload = {
-      v: 1,
-      inputText,
-      format,
-      formatting,
-      gradientColors,
-      useRainbow,
-      charsPerColor,
-      prefix,
-      suffix,
-      lowercaseHex,
-    }
-    try {
-      const raw = localStorage.getItem(PRESETS_KEY)
-      const o = raw ? (JSON.parse(raw) as Record<string, PresetPayload>) : {}
-      o[name] = payload
-      localStorage.setItem(PRESETS_KEY, JSON.stringify(o))
-      setPresetList(Object.keys(o).sort())
-    } catch {
-      /* ignore */
-    }
-  }, [
-    presetName,
-    inputText,
-    format,
-    formatting,
-    gradientColors,
-    useRainbow,
-    charsPerColor,
-    prefix,
-    suffix,
-    lowercaseHex,
-  ])
-
-  const loadPreset = useCallback((name: string) => {
-    if (!name) return
-    try {
-      const raw = localStorage.getItem(PRESETS_KEY)
-      if (!raw) return
-      const o = JSON.parse(raw) as Record<string, PresetPayload>
-      if (o[name]) applyPayload(o[name])
-    } catch {
-      /* ignore */
-    }
-  }, [])
-
-  const deletePreset = useCallback((name: string) => {
-    if (!name) return
-    try {
-      const raw = localStorage.getItem(PRESETS_KEY)
-      if (!raw) return
-      const o = JSON.parse(raw) as Record<string, PresetPayload>
-      delete o[name]
-      localStorage.setItem(PRESETS_KEY, JSON.stringify(o))
-      setPresetList(Object.keys(o).sort())
-    } catch {
-      /* ignore */
-    }
-  }, [])
-
-  const decodeImport = useCallback(() => {
-    try {
-      const p = JSON.parse(importText) as PresetPayload
-      if (p.v === 1) applyPayload(p)
-    } catch {
-      /* ignore */
-    }
-  }, [importText])
 
   const mirrorObfuscation =
     formatting.obfuscated ? 'mc-obfuscated ' : ''
@@ -775,107 +686,37 @@ export function Generator() {
               placeholder={t('outputPlaceholder')}
               className="h-full min-h-[6rem] w-full resize-none rounded-lg border border-white/10 bg-[#0d0f14] px-2 py-2 pb-10 font-mono text-[10px] leading-relaxed text-zinc-300 outline-none"
             />
-            <button
-              type="button"
-              onClick={copyToClipboard}
-              className="absolute bottom-2 right-2 inline-flex items-center gap-1 rounded-md bg-sky-600 px-2 py-1 text-[11px] text-white hover:bg-sky-500"
-            >
-              {copied ? (
-                <>
-                  <Check className="h-3 w-3" />
-                  {t('copied')}
-                </>
-              ) : (
-                <>
-                  <Copy className="h-3 w-3" />
-                  {t('copy')}
-                </>
-              )}
-            </button>
+            <div className="absolute bottom-2 right-2 flex items-center gap-1">
+              <button
+                type="button"
+                onClick={copyUrl}
+                className="inline-flex items-center gap-1 rounded-md border border-white/10 bg-black/40 px-2 py-1 text-[11px] text-zinc-300 hover:bg-white/10"
+              >
+                <Link2 className="h-3 w-3" />
+                {t('copyUrl')}
+              </button>
+              <button
+                type="button"
+                onClick={copyToClipboard}
+                className="inline-flex items-center gap-1 rounded-md bg-sky-600 px-2 py-1 text-[11px] text-white hover:bg-sky-500"
+              >
+                {copied ? (
+                  <>
+                    <Check className="h-3 w-3" />
+                    {t('copied')}
+                  </>
+                ) : (
+                  <>
+                    <Copy className="h-3 w-3" />
+                    {t('copy')}
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </div>
 
-        {/* Presets */}
-        <div className="panel flex min-h-0 min-w-0 flex-col gap-2 overflow-y-auto rounded-xl border border-white/[0.06] bg-[#161922] p-3">
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
-            {t('columnPresets')}
-          </h2>
-
-          <div className="flex flex-col gap-1">
-            <label className="text-[10px] uppercase text-zinc-500">{t('loadPreset')}</label>
-            <select
-              className="rounded-lg border border-white/10 bg-[#0d0f14] px-2 py-1.5 text-xs text-zinc-200 outline-none"
-              defaultValue=""
-              onChange={(e) => {
-                loadPreset(e.target.value)
-                e.target.value = ''
-              }}
-            >
-              <option value="" disabled>
-                {t('pickPreset')}
-              </option>
-              {presetList.map((name) => (
-                <option key={name} value={name}>
-                  {name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="flex gap-2">
-            <input
-              value={presetName}
-              onChange={(e) => setPresetName(e.target.value)}
-              placeholder={t('presetNamePlaceholder')}
-              className="min-w-0 flex-1 rounded border border-white/10 bg-[#0d0f14] px-2 py-1 text-xs text-zinc-200 outline-none"
-            />
-            <button
-              type="button"
-              onClick={savePreset}
-              className="shrink-0 rounded bg-sky-600/40 px-2 py-1 text-xs text-sky-100 hover:bg-sky-600/60"
-            >
-              {t('savePreset')}
-            </button>
-          </div>
-
-          <button
-            type="button"
-            onClick={() => deletePreset(presetName.trim())}
-            className="inline-flex items-center gap-1 self-start rounded border border-white/10 px-2 py-1 text-[11px] text-zinc-400 hover:bg-red-500/15 hover:text-red-300"
-          >
-            <Trash2 className="h-3 w-3" />
-            {t('deletePreset')}
-          </button>
-
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={copyUrl}
-              className="inline-flex items-center gap-1 rounded-md border border-white/10 bg-black/25 px-2 py-1 text-[11px] text-zinc-300 hover:bg-white/10"
-            >
-              <Link2 className="h-3 w-3" />
-              {t('copyUrl')}
-            </button>
-          </div>
-
-          <div className="flex min-h-0 flex-1 flex-col gap-1">
-            <label className="text-[10px] uppercase text-zinc-500">{t('importJson')}</label>
-            <textarea
-              value={importText}
-              onChange={(e) => setImportText(e.target.value)}
-              placeholder={t('importPlaceholder')}
-              className="min-h-[4rem] flex-1 resize-none rounded-lg border border-white/10 bg-[#0d0f14] px-2 py-1 font-mono text-[10px] text-zinc-300 outline-none"
-            />
-            <button
-              type="button"
-              onClick={decodeImport}
-              className="inline-flex items-center gap-1 self-start rounded-md bg-zinc-700/50 px-2 py-1 text-[11px] text-zinc-200 hover:bg-zinc-600/60"
-            >
-              <FileJson className="h-3 w-3" />
-              {t('decodeImport')}
-            </button>
-          </div>
-        </div>
+        <YamlEditorPanel />
       </section>
 
       {showPalette && (
