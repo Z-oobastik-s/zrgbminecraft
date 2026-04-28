@@ -17,6 +17,14 @@ type ErrorMap = Partial<Record<ServerConfigFile, string>>
 
 /** Произвольный конфиг (permissions.yml и т.д.) - только полноэкранный текстовый редактор. */
 type CustomFileState = { name: string; text: string }
+type LogFileState = { name: string; text: string }
+type LogLevel = 'error' | 'warn' | 'info' | 'debug' | 'other'
+type LogLine = {
+  idx: number
+  raw: string
+  level: LogLevel
+  source: string
+}
 
 function basenameLower(name: string): string {
   const s = name.replace(/\\/g, '/')
@@ -38,6 +46,68 @@ function matchPresetByFileName(name: string): ServerConfigFile | null {
   )
     return 'paper-world-defaults.yml'
   return null
+}
+
+function isLogFileName(name: string): boolean {
+  const b = basenameLower(name)
+  return b.endsWith('.log') || b.includes('latest.log')
+}
+
+function detectLogLevel(line: string): LogLevel {
+  const s = line.toLowerCase()
+  if (
+    /\b(error|severe|fatal|exception|fail(ed|ure)?|stack trace|traceback)\b/i.test(line) ||
+    s.includes('] [server thread/error]')
+  )
+    return 'error'
+  if (/\b(warn|warning)\b/i.test(line) || s.includes('] [server thread/warn]')) return 'warn'
+  if (/\b(debug|trace)\b/i.test(line)) return 'debug'
+  if (/\b(info|notice|startup|done)\b/i.test(line) || s.includes('] [server thread/info]'))
+    return 'info'
+  return 'other'
+}
+
+function detectLogSource(line: string): string {
+  const matches = [...line.matchAll(/\[([^\]]{2,48})\]/g)]
+  const skip = new Set([
+    'info',
+    'warn',
+    'warning',
+    'error',
+    'debug',
+    'trace',
+    'server thread',
+    'async chat thread',
+    'main',
+    'worker',
+  ])
+  for (const m of matches) {
+    const token = (m[1] || '').trim()
+    const lower = token.toLowerCase()
+    if (!token) continue
+    if (skip.has(lower)) continue
+    if (lower.includes('/info') || lower.includes('/warn') || lower.includes('/error')) continue
+    if (/^\d{2}:\d{2}:\d{2}$/.test(token)) continue
+    if (/^\d{4}-\d{2}-\d{2}/.test(token)) continue
+    if (/^[A-Za-z0-9_.-]+$/.test(token)) return token
+  }
+  return 'core'
+}
+
+function levelLabel(level: LogLevel): string {
+  if (level === 'error') return 'Ошибки'
+  if (level === 'warn') return 'Предупреждения'
+  if (level === 'info') return 'Инфо'
+  if (level === 'debug') return 'Debug'
+  return 'Остальное'
+}
+
+function levelBadgeClass(level: LogLevel): string {
+  if (level === 'error') return 'border-red-500/40 bg-red-500/15 text-red-200'
+  if (level === 'warn') return 'border-amber-500/40 bg-amber-500/15 text-amber-200'
+  if (level === 'info') return 'border-sky-500/40 bg-sky-500/15 text-sky-200'
+  if (level === 'debug') return 'border-violet-500/40 bg-violet-500/15 text-violet-200'
+  return 'border-zinc-500/40 bg-zinc-500/15 text-zinc-200'
 }
 
 function setAtPath(root: Record<string, unknown>, path: string, value: unknown) {
@@ -161,7 +231,19 @@ export function ServerSettingsView() {
   const [parseErrors, setParseErrors] = useState<ErrorMap>({})
   const [copiedFile, setCopiedFile] = useState<string | null>(null)
   const [customFile, setCustomFile] = useState<CustomFileState | null>(null)
+  const [logFile, setLogFile] = useState<LogFileState | null>(null)
+  const [logQuery, setLogQuery] = useState('')
+  const [logSource, setLogSource] = useState('all')
+  const [logLevelFilter, setLogLevelFilter] = useState<Record<LogLevel, boolean>>({
+    error: true,
+    warn: true,
+    info: true,
+    debug: false,
+    other: true,
+  })
+  const [logScrollTop, setLogScrollTop] = useState(0)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const logViewportRef = useRef<HTMLDivElement>(null)
   const { copiedId, copy } = useCopyFeedback(1800)
 
   const filtered = useMemo(() => {
@@ -220,11 +302,71 @@ export function ServerSettingsView() {
     return out
   }, [rawFiles, values])
 
+  const parsedLogLines = useMemo<LogLine[]>(() => {
+    if (!logFile) return []
+    return logFile.text.split(/\r?\n/).map((raw, idx) => ({
+      idx: idx + 1,
+      raw,
+      level: detectLogLevel(raw),
+      source: detectLogSource(raw),
+    }))
+  }, [logFile])
+
+  const logSourceCounts = useMemo(() => {
+    const counts: Record<string, number> = {}
+    for (const row of parsedLogLines) {
+      counts[row.source] = (counts[row.source] || 0) + 1
+    }
+    return counts
+  }, [parsedLogLines])
+
+  const topSources = useMemo(() => {
+    return Object.entries(logSourceCounts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 12)
+      .map(([source]) => source)
+  }, [logSourceCounts])
+
+  const logLevelCounts = useMemo<Record<LogLevel, number>>(() => {
+    const counts: Record<LogLevel, number> = {
+      error: 0,
+      warn: 0,
+      info: 0,
+      debug: 0,
+      other: 0,
+    }
+    for (const row of parsedLogLines) counts[row.level] += 1
+    return counts
+  }, [parsedLogLines])
+
+  const filteredLogLines = useMemo(() => {
+    const q = logQuery.trim().toLowerCase()
+    return parsedLogLines.filter((line) => {
+      if (!logLevelFilter[line.level]) return false
+      if (logSource !== 'all' && line.source !== logSource) return false
+      if (!q) return true
+      return line.raw.toLowerCase().includes(q)
+    })
+  }, [logLevelFilter, logQuery, logSource, parsedLogLines])
+
+  const rowHeight = 26
+  const overscan = 30
+  const viewportHeight = 560
+  const totalVirtualHeight = filteredLogLines.length * rowHeight
+  const startIndex = Math.max(0, Math.floor(logScrollTop / rowHeight) - overscan)
+  const endIndex = Math.min(
+    filteredLogLines.length,
+    startIndex + Math.ceil(viewportHeight / rowHeight) + overscan * 2
+  )
+  const visibleLogLines = filteredLogLines.slice(startIndex, endIndex)
+
   const handleFileLoaded = async (f: File) => {
     const text = await f.text()
     const preset = matchPresetByFileName(f.name)
+    const logLike = isLogFileName(f.name)
 
     if (preset) {
+      setLogFile(null)
       setCustomFile(null)
       setSelectedFile(preset)
       const target = preset
@@ -255,17 +397,42 @@ export function ServerSettingsView() {
       return
     }
 
+    if (logLike) {
+      setCustomFile(null)
+      setLogQuery('')
+      setLogSource('all')
+      setLogScrollTop(0)
+      setLogLevelFilter({
+        error: true,
+        warn: true,
+        info: true,
+        debug: false,
+        other: true,
+      })
+      setLogFile({ name: f.name, text })
+      return
+    }
+
+    setLogFile(null)
     setCustomFile({ name: f.name, text })
   }
 
   return (
     <section className="mx-auto flex min-h-0 w-full max-w-[min(92rem,calc(100vw-0.75rem))] flex-1 flex-col gap-2 overflow-hidden px-2 pb-1 pt-0.5 sm:px-3 sm:pb-2 sm:pt-1">
-      {!customFile ? (
+      {!customFile && !logFile ? (
         <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/10 p-3 text-[12px] text-emerald-100">
           <p className="font-semibold">Панель главных параметров сервера</p>
           <p className="mt-1 text-emerald-100/80">
             Меняйте ключевые настройки Paper/Spigot/Bukkit и сразу копируйте готовые блоки
             для каждого файла. Это рабочий черновик под ваши конфиги из `dddd`.
+          </p>
+        </div>
+      ) : logFile ? (
+        <div className="rounded-xl border border-violet-500/25 bg-violet-500/10 p-3 text-[12px] text-violet-100">
+          <p className="font-semibold">Лог-режим сервера</p>
+          <p className="mt-1 text-violet-100/85">
+            Загружен лог-файл. Доступны фильтры по уровням, поиск по тексту и цветовая подсветка
+            для быстрого анализа ошибок и предупреждений.
           </p>
         </div>
       ) : (
@@ -280,13 +447,25 @@ export function ServerSettingsView() {
 
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-white/[0.08] bg-[#141722] p-3">
         <div className="grid shrink-0 grid-cols-1 gap-2 border-b border-white/[0.08] pb-3 xl:grid-cols-[1fr_auto_auto]">
-          {!customFile ? (
+          {!customFile && !logFile ? (
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Поиск параметра: motd, anti-xray, max-players..."
               className="min-w-[18rem] rounded-lg border border-white/10 bg-[#0d0f14] px-3 py-2 text-xs text-zinc-200 outline-none focus:border-sky-500/60"
             />
+          ) : logFile ? (
+            <div className="flex min-h-[2.5rem] flex-wrap items-center gap-2 rounded-lg border border-white/10 bg-[#0d0f14] px-3 py-2 text-xs text-zinc-300">
+              <span className="text-zinc-500">Лог:</span>
+              <span className="font-mono text-violet-200">{logFile.name}</span>
+              <button
+                type="button"
+                onClick={() => setLogFile(null)}
+                className="rounded border border-white/15 bg-black/40 px-2 py-1 text-[11px] text-zinc-200 hover:bg-white/10"
+              >
+                К панели шаблонов
+              </button>
+            </div>
           ) : (
             <div className="flex min-h-[2.5rem] flex-wrap items-center gap-2 rounded-lg border border-white/10 bg-[#0d0f14] px-3 py-2 text-xs text-zinc-300">
               <span className="text-zinc-500">Открыт файл:</span>
@@ -304,6 +483,7 @@ export function ServerSettingsView() {
             value={selectedFile}
             onChange={(e) => {
               setCustomFile(null)
+              setLogFile(null)
               setSelectedFile(e.target.value as ServerConfigFile)
             }}
             className="rounded-lg border border-white/10 bg-[#0d0f14] px-2 py-2 text-xs text-zinc-200 outline-none focus:border-sky-500/60"
@@ -326,7 +506,7 @@ export function ServerSettingsView() {
             <input
               ref={fileInputRef}
               type="file"
-              accept=".properties,.yml,.yaml,text/plain,text/yaml"
+              accept=".properties,.yml,.yaml,.log,text/plain,text/yaml"
               className="hidden"
               onChange={(e) => {
                 const f = e.target.files?.[0]
@@ -337,7 +517,161 @@ export function ServerSettingsView() {
           </header>
         </div>
 
-        {customFile ? (
+        {logFile ? (
+          <div className="flex min-h-0 flex-1 flex-col gap-2 pt-3">
+            <div className="sticky top-0 z-20 grid grid-cols-1 gap-2 rounded-lg border border-white/[0.08] bg-[#10131d]/95 p-2 backdrop-blur xl:grid-cols-[1fr_auto]">
+              <div className="grid grid-cols-1 gap-2 lg:grid-cols-[1fr_auto_auto]">
+                <input
+                  value={logQuery}
+                  onChange={(e) => setLogQuery(e.target.value)}
+                  placeholder="Поиск по логу: plugin name, player, stack trace..."
+                  className="min-w-[18rem] rounded-lg border border-white/10 bg-[#0d0f14] px-3 py-2 text-xs text-zinc-200 outline-none focus:border-violet-500/60"
+                />
+                <select
+                  value={logSource}
+                  onChange={(e) => setLogSource(e.target.value)}
+                  className="rounded-lg border border-white/10 bg-[#0d0f14] px-2 py-2 text-xs text-zinc-200 outline-none focus:border-violet-500/60"
+                >
+                  <option value="all">Все источники ({parsedLogLines.length})</option>
+                  {topSources.map((source) => (
+                    <option key={source} value={source}>
+                      {source} ({logSourceCounts[source] || 0})
+                    </option>
+                  ))}
+                </select>
+                <div className="flex flex-wrap gap-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setLogQuery('')
+                      setLogSource('all')
+                      setLogLevelFilter({
+                        error: true,
+                        warn: true,
+                        info: true,
+                        debug: false,
+                        other: true,
+                      })
+                    }}
+                    className="rounded border border-white/15 bg-black/30 px-2 py-1 text-[11px] text-zinc-200 hover:bg-white/10"
+                  >
+                    Все
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setLogLevelFilter({
+                        error: true,
+                        warn: true,
+                        info: false,
+                        debug: false,
+                        other: false,
+                      })
+                    }
+                    className="rounded border border-red-500/35 bg-red-500/10 px-2 py-1 text-[11px] text-red-200 hover:bg-red-500/20"
+                  >
+                    Только проблемы
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setLogQuery('Exception')}
+                    className="rounded border border-violet-500/35 bg-violet-500/10 px-2 py-1 text-[11px] text-violet-200 hover:bg-violet-500/20"
+                  >
+                    Стектрейсы
+                  </button>
+                </div>
+              </div>
+              <div className="flex flex-wrap items-center gap-1.5">
+                {(['error', 'warn', 'info', 'debug', 'other'] as LogLevel[]).map((level) => (
+                  <button
+                    key={level}
+                    type="button"
+                    onClick={() =>
+                      setLogLevelFilter((prev) => ({ ...prev, [level]: !prev[level] }))
+                    }
+                    className={`inline-flex items-center gap-1 rounded border px-2 py-1 text-[11px] transition ${
+                      logLevelFilter[level]
+                        ? levelBadgeClass(level)
+                        : 'border-white/15 bg-black/30 text-zinc-400 hover:bg-white/10'
+                    }`}
+                  >
+                    <span>{levelLabel(level)}</span>
+                    <span className="font-mono opacity-90">{logLevelCounts[level]}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex min-h-0 flex-1 flex-col rounded-lg border border-white/[0.07] bg-black/20 p-2">
+              <div className="mb-2 flex flex-wrap items-center justify-between gap-2 text-[11px]">
+                <div className="text-zinc-400">
+                  Показано строк: <span className="font-mono text-zinc-200">{filteredLogLines.length}</span>{' '}
+                  из <span className="font-mono text-zinc-200">{parsedLogLines.length}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCopiedFile('__log__')
+                      void copy(filteredLogLines.map((line) => line.raw).join('\n'))
+                    }}
+                    className="inline-flex items-center gap-1 rounded border border-white/15 bg-black/30 px-2 py-1 text-[11px] text-zinc-200 hover:bg-white/10"
+                  >
+                    <Copy className="h-3 w-3" />
+                    {copiedFile === '__log__' ? 'Скопировано' : 'Копировать выборку'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      downloadText(
+                        `${logFile.name.replace(/\.log$/i, '')}-filtered.log`,
+                        filteredLogLines.map((line) => line.raw).join('\n')
+                      )
+                    }
+                    className="inline-flex items-center gap-1 rounded border border-white/15 bg-black/30 px-2 py-1 text-[11px] text-zinc-200 hover:bg-white/10"
+                  >
+                    <Download className="h-3 w-3" />
+                    Скачать выборку
+                  </button>
+                </div>
+              </div>
+
+              <div
+                ref={logViewportRef}
+                onScroll={(e) => setLogScrollTop(e.currentTarget.scrollTop)}
+                className="min-h-0 flex-1 overflow-auto rounded border border-white/10 bg-[#0d0f14] p-1.5"
+                style={{ height: `${viewportHeight}px` }}
+              >
+                {filteredLogLines.length === 0 ? (
+                  <div className="p-3 text-[12px] text-zinc-500">
+                    Ничего не найдено - поменяйте фильтры или строку поиска.
+                  </div>
+                ) : (
+                  <div className="relative" style={{ height: `${totalVirtualHeight}px` }}>
+                    <div
+                      className="absolute left-0 right-0"
+                      style={{ transform: `translateY(${startIndex * rowHeight}px)` }}
+                    >
+                      {visibleLogLines.map((line) => (
+                      <div
+                        key={`${line.idx}-${line.raw}`}
+                        className={`grid grid-cols-[auto_auto_1fr] gap-2 rounded border px-2 py-1 font-mono text-[11px] ${
+                          levelBadgeClass(line.level)
+                        }`}
+                        style={{ height: `${rowHeight}px` }}
+                      >
+                        <span className="min-w-[3rem] text-right text-zinc-300/85">{line.idx}</span>
+                        <span className="min-w-[4rem] truncate text-zinc-200/80">{line.source}</span>
+                        <span className="truncate whitespace-pre">{line.raw || ' '}</span>
+                      </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        ) : customFile ? (
           <div className="flex min-h-0 flex-1 flex-col gap-2 pt-3">
             <div className="flex min-h-0 flex-1 flex-col rounded-lg border border-white/[0.07] bg-black/20 p-2">
               <h3 className="mb-2 inline-flex flex-wrap items-center gap-2 text-sm font-semibold text-sky-200">
