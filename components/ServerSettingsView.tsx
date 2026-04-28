@@ -469,7 +469,7 @@ export function ServerSettingsView() {
           ) : (
             <div className="flex min-h-[2.5rem] flex-wrap items-center gap-2 rounded-lg border border-white/10 bg-[#0d0f14] px-3 py-2 text-xs text-zinc-300">
               <span className="text-zinc-500">Открыт файл:</span>
-              <span className="font-mono text-sky-200">{customFile.name}</span>
+              <span className="font-mono text-sky-200">{customFile?.name ?? ''}</span>
               <button
                 type="button"
                 onClick={() => setCustomFile(null)}
