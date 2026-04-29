@@ -104,11 +104,19 @@ function levelLabel(level: LogLevel): string {
 }
 
 function levelBadgeClass(level: LogLevel): string {
-  if (level === 'error') return 'border-red-500/40 bg-red-500/15 text-red-200'
-  if (level === 'warn') return 'border-amber-500/40 bg-amber-500/15 text-amber-200'
-  if (level === 'info') return 'border-sky-500/40 bg-sky-500/15 text-sky-200'
-  if (level === 'debug') return 'border-violet-500/40 bg-violet-500/15 text-violet-200'
-  return 'border-zinc-500/40 bg-zinc-500/15 text-zinc-200'
+  if (level === 'error') return 'border-red-500/35 bg-red-500/8 text-red-100'
+  if (level === 'warn') return 'border-amber-500/35 bg-amber-500/8 text-amber-100'
+  if (level === 'info') return 'border-sky-500/30 bg-sky-500/8 text-sky-100'
+  if (level === 'debug') return 'border-violet-500/30 bg-violet-500/8 text-violet-100'
+  return 'border-zinc-500/30 bg-zinc-500/6 text-zinc-200'
+}
+
+function levelRowClass(level: LogLevel): string {
+  if (level === 'error') return 'border-red-500/20 bg-red-500/[0.06]'
+  if (level === 'warn') return 'border-amber-500/20 bg-amber-500/[0.05]'
+  if (level === 'info') return 'border-sky-500/20 bg-sky-500/[0.04]'
+  if (level === 'debug') return 'border-violet-500/20 bg-violet-500/[0.04]'
+  return 'border-white/10 bg-white/[0.02]'
 }
 
 function setAtPath(root: Record<string, unknown>, path: string, value: unknown) {
@@ -351,7 +359,7 @@ export function ServerSettingsView() {
     })
   }, [logLevelFilter, logQuery, logSource, parsedLogLines])
 
-  const rowHeight = 26
+  const rowHeight = 28
   const overscan = 30
   const viewportHeight = 560
   const totalVirtualHeight = filteredLogLines.length * rowHeight
@@ -429,15 +437,7 @@ export function ServerSettingsView() {
             для каждого файла. Это рабочий черновик под ваши конфиги из `dddd`.
           </p>
         </div>
-      ) : logFile ? (
-        <div className="rounded-xl border border-violet-500/25 bg-violet-500/10 p-3 text-[12px] text-violet-100">
-          <p className="font-semibold">Лог-режим сервера</p>
-          <p className="mt-1 text-violet-100/85">
-            Загружен лог-файл. Доступны фильтры по уровням, поиск по тексту и цветовая подсветка
-            для быстрого анализа ошибок и предупреждений.
-          </p>
-        </div>
-      ) : (
+      ) : !logFile ? (
         <div className="rounded-xl border border-sky-500/25 bg-sky-500/10 p-3 text-[12px] text-sky-100">
           <p className="font-semibold">Редактор произвольного файла</p>
           <p className="mt-1 text-sky-100/85">
@@ -445,7 +445,7 @@ export function ServerSettingsView() {
             `server.properties` или `paper-*.yml` по имени, чтобы вернуться к форме полей.
           </p>
         </div>
-      )}
+      ) : null}
 
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-white/[0.08] bg-[#141722] p-3">
         <div className="grid shrink-0 grid-cols-1 gap-2 border-b border-white/[0.08] pb-3 xl:grid-cols-[1fr_auto_auto]">
@@ -655,17 +655,15 @@ export function ServerSettingsView() {
                       style={{ transform: `translateY(${startIndex * rowHeight}px)` }}
                     >
                       {visibleLogLines.map((line) => (
-                      <div
-                        key={`${line.idx}-${line.raw}`}
-                        className={`grid grid-cols-[auto_auto_1fr] gap-2 rounded border px-2 py-1 font-mono text-[11px] ${
-                          levelBadgeClass(line.level)
-                        }`}
-                        style={{ height: `${rowHeight}px` }}
-                      >
-                        <span className="min-w-[3rem] text-right text-zinc-300/85">{line.idx}</span>
-                        <span className="min-w-[4rem] truncate text-zinc-200/80">{line.source}</span>
-                        <span className="truncate whitespace-pre">{line.raw || ' '}</span>
-                      </div>
+                        <div
+                          key={`${line.idx}-${line.raw}`}
+                          className={`mb-1 grid grid-cols-[auto_auto_1fr] gap-2 rounded border px-2 py-1 font-mono text-[11px] text-zinc-200/90 ${levelRowClass(line.level)}`}
+                          style={{ height: `${rowHeight}px` }}
+                        >
+                          <span className="min-w-[3rem] text-right text-zinc-400">{line.idx}</span>
+                          <span className="min-w-[4rem] truncate text-zinc-300">{line.source}</span>
+                          <span className="truncate whitespace-pre text-zinc-200/85">{line.raw || ' '}</span>
+                        </div>
                       ))}
                     </div>
                   </div>
