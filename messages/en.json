@@ -108,6 +108,7 @@
     "copyFiltered": "Copy filtered",
     "downloadFiltered": "Download filtered",
     "nothingFound": "Nothing found - adjust filters or search text.",
+    "clearSearch": "Clear search",
     "copied": "Copied",
     "copy": "Copy",
     "download": "Download"

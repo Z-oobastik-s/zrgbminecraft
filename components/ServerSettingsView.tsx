@@ -353,6 +353,22 @@ export function ServerSettingsView() {
     return counts
   }, [parsedLogLines])
 
+  const sourceScopedLogLines = useMemo(() => {
+    return parsedLogLines.filter((line) => (logSource === 'all' ? true : line.source === logSource))
+  }, [logSource, parsedLogLines])
+
+  const sourceScopedLevelCounts = useMemo<Record<LogLevel, number>>(() => {
+    const counts: Record<LogLevel, number> = {
+      error: 0,
+      warn: 0,
+      info: 0,
+      debug: 0,
+      other: 0,
+    }
+    for (const row of sourceScopedLogLines) counts[row.level] += 1
+    return counts
+  }, [sourceScopedLogLines])
+
   const filteredLogLines = useMemo(() => {
     const q = logQuery.trim().toLowerCase()
     return parsedLogLines.filter((line) => {
@@ -602,7 +618,11 @@ export function ServerSettingsView() {
                     }`}
                   >
                     <span>{levelLabel(level)}</span>
-                    <span className="font-mono opacity-90">{logLevelCounts[level]}</span>
+                    <span className="font-mono opacity-90">
+                      {logQuery.trim()
+                        ? `${filteredLogLines.filter((row) => row.level === level).length}/${sourceScopedLevelCounts[level]}`
+                        : sourceScopedLevelCounts[level]}
+                    </span>
                   </button>
                 ))}
               </div>
@@ -652,6 +672,15 @@ export function ServerSettingsView() {
                 {filteredLogLines.length === 0 ? (
                   <div className="p-3 text-[12px] text-zinc-500">
                     {t('nothingFound')}
+                    {logQuery.trim() ? (
+                      <button
+                        type="button"
+                        onClick={() => setLogQuery('')}
+                        className="ml-2 rounded border border-white/15 bg-black/30 px-2 py-0.5 text-[11px] text-zinc-300 hover:bg-white/10"
+                      >
+                        {t('clearSearch')}
+                      </button>
+                    ) : null}
                   </div>
                 ) : (
                   <div className="relative" style={{ height: `${totalVirtualHeight}px` }}>
