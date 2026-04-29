@@ -715,31 +715,60 @@ export function ServerSettingsView() {
             </div>
           </div>
         ) : (
-          <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 pt-3 xl:grid-cols-[1.25fr_1fr]">
+          <div className="flex min-h-0 flex-1 flex-col gap-3 pt-3">
             <div className="min-h-0 overflow-y-auto pr-1">
-              <div className="mb-2 inline-flex rounded-lg border border-white/10 bg-[#0d0f14] p-0.5">
-                <button
-                  type="button"
-                  onClick={() => setEditorMode('full')}
-                  className={`rounded px-2 py-1 text-[11px] ${
-                    editorMode === 'full'
-                      ? 'bg-sky-500/20 text-sky-100'
-                      : 'text-zinc-400 hover:bg-white/5'
-                  }`}
-                >
-                  {t('fullTemplateMode')}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setEditorMode('quick')}
-                  className={`rounded px-2 py-1 text-[11px] ${
-                    editorMode === 'quick'
-                      ? 'bg-sky-500/20 text-sky-100'
-                      : 'text-zinc-400 hover:bg-white/5'
-                  }`}
-                >
-                  {t('quickParamsMode')}
-                </button>
+              <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                <div className="inline-flex rounded-lg border border-white/10 bg-[#0d0f14] p-0.5">
+                  <button
+                    type="button"
+                    onClick={() => setEditorMode('full')}
+                    className={`rounded px-2 py-1 text-[11px] ${
+                      editorMode === 'full'
+                        ? 'bg-sky-500/20 text-sky-100'
+                        : 'text-zinc-400 hover:bg-white/5'
+                    }`}
+                  >
+                    {t('fullTemplateMode')}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEditorMode('quick')}
+                    className={`rounded px-2 py-1 text-[11px] ${
+                      editorMode === 'quick'
+                        ? 'bg-sky-500/20 text-sky-100'
+                        : 'text-zinc-400 hover:bg-white/5'
+                    }`}
+                  >
+                    {t('quickParamsMode')}
+                  </button>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex items-center gap-1 text-xs font-semibold text-sky-200">
+                    <ShieldCheck className="h-3.5 w-3.5" />
+                    {selectedFile}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCopiedFile(selectedFile)
+                      void copy(exports[selectedFile])
+                    }}
+                    className="inline-flex items-center gap-1 rounded border border-white/15 bg-black/30 px-2 py-1 text-[11px] text-zinc-200 hover:bg-white/10"
+                  >
+                    <Copy className="h-3 w-3" />
+                    {copiedFile === selectedFile && copiedId === exports[selectedFile]
+                      ? t('copied')
+                      : t('copy')}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => downloadText(selectedFile, exports[selectedFile])}
+                    className="inline-flex items-center gap-1 rounded border border-white/15 bg-black/30 px-2 py-1 text-[11px] text-zinc-200 hover:bg-white/10"
+                  >
+                    <Download className="h-3 w-3" />
+                    {t('download')}
+                  </button>
+                </div>
               </div>
               {rawFiles[selectedFile] ? (
                 <p className="mb-2 text-[10px] text-emerald-300/90">
@@ -825,42 +854,6 @@ export function ServerSettingsView() {
                   })}
                 </div>
               )}
-            </div>
-
-            <div className="flex min-h-0 flex-col rounded-lg border border-white/[0.07] bg-black/20 p-2">
-              <h3 className="mb-2 inline-flex items-center gap-2 text-sm font-semibold text-sky-200">
-                <ShieldCheck className="h-4 w-4" />
-                {selectedFile}
-              </h3>
-              <div className="mb-2 flex items-center justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setCopiedFile(selectedFile)
-                    void copy(exports[selectedFile])
-                  }}
-                  className="inline-flex items-center gap-1 rounded border border-white/15 bg-black/30 px-2 py-1 text-[11px] text-zinc-200 hover:bg-white/10"
-                >
-                  <Copy className="h-3 w-3" />
-                  {copiedFile === selectedFile && copiedId === exports[selectedFile]
-                    ? t('copied')
-                    : t('copy')}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => downloadText(selectedFile, exports[selectedFile])}
-                  className="inline-flex items-center gap-1 rounded border border-white/15 bg-black/30 px-2 py-1 text-[11px] text-zinc-200 hover:bg-white/10"
-                >
-                  <Download className="h-3 w-3" />
-                  {t('download')}
-                </button>
-              </div>
-              <textarea
-                value={exports[selectedFile]}
-                readOnly
-                spellCheck={false}
-                className="min-h-0 flex-1 resize-y rounded border border-white/10 bg-[#0d0f14] px-2 py-1.5 font-mono text-[10px] leading-relaxed text-zinc-300 outline-none"
-              />
             </div>
           </div>
         )}
