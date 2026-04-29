@@ -10,6 +10,7 @@ import {
   fileDisplayName,
   type ServerConfigFile,
 } from '@/lib/server-settings'
+import { DEFAULT_SERVER_CONFIG_TEMPLATES } from '@/lib/server-config-templates'
 
 type ValueMap = Record<string, string | number | boolean>
 type RawFileMap = Partial<Record<ServerConfigFile, string>>
@@ -271,15 +272,16 @@ export function ServerSettingsView() {
     for (const file of CONFIG_FILE_ORDER) {
       const rows = SERVER_SETTINGS.filter((s) => s.file === file)
       try {
+        const baseTemplate = rawFiles[file] ?? DEFAULT_SERVER_CONFIG_TEMPLATES[file]
         if (file === 'server.properties') {
           const patch = Object.fromEntries(rows.map((r) => [r.keyPath, String(values[r.id])]))
-          out[file] = rawFiles[file]
-            ? applyPropertiesPatch(rawFiles[file]!, patch)
+          out[file] = baseTemplate
+            ? applyPropertiesPatch(baseTemplate, patch)
             : rows.map((r) => `${r.keyPath}=${String(values[r.id])}`).join('\n')
           continue
         }
-        if (rawFiles[file]) {
-          const doc = parseDocument(rawFiles[file]!)
+        if (baseTemplate) {
+          const doc = parseDocument(baseTemplate)
           for (const row of rows) {
             doc.setIn(pathSegments(row.keyPath), values[row.id])
           }
