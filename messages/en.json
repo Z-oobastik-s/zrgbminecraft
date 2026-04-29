@@ -84,5 +84,32 @@
     "underline": "Underline",
     "strikethrough": "Strikethrough",
     "obfuscated": "Obfuscated"
+  },
+  "serverPage": {
+    "title": "Main server settings panel",
+    "subtitle": "Edit key Paper/Spigot/Bukkit settings and copy ready config blocks for each file.",
+    "customEditorTitle": "Custom file editor",
+    "customEditorHint": "This file is not from preset templates. You can edit full text and download it back.",
+    "searchPlaceholder": "Search setting: motd, anti-xray, max-players...",
+    "backToTemplates": "Back to templates",
+    "openedFile": "Opened file:",
+    "uploadFile": "Upload file",
+    "fullTemplateMode": "Full template",
+    "quickParamsMode": "Quick parameters",
+    "loadedFileHint": "File loaded - changes are applied to real content.",
+    "templateHint": "You can work with template defaults or upload your own file for precise editing.",
+    "parseError": "Parse error",
+    "logSearchPlaceholder": "Search in log: plugin name, player, stack trace...",
+    "allSources": "All sources",
+    "all": "All",
+    "onlyProblems": "Only problems",
+    "stacktraces": "Stacktraces",
+    "shownRows": "Shown rows:",
+    "copyFiltered": "Copy filtered",
+    "downloadFiltered": "Download filtered",
+    "nothingFound": "Nothing found - adjust filters or search text.",
+    "copied": "Copied",
+    "copy": "Copy",
+    "download": "Download"
   }
 }

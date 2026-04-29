@@ -84,5 +84,32 @@
     "underline": "Подчеркивание",
     "strikethrough": "Зачеркивание",
     "obfuscated": "Зашифрованный"
+  },
+  "serverPage": {
+    "title": "Панель главных параметров сервера",
+    "subtitle": "Меняйте ключевые настройки Paper/Spigot/Bukkit и сразу копируйте готовые блоки для каждого файла.",
+    "customEditorTitle": "Редактор произвольного файла",
+    "customEditorHint": "Открыт файл не из списка шаблонов. Можно редактировать весь текст и скачать его обратно.",
+    "searchPlaceholder": "Поиск параметра: motd, anti-xray, max-players...",
+    "backToTemplates": "К панели шаблонов",
+    "openedFile": "Открыт файл:",
+    "uploadFile": "Загрузить файл",
+    "fullTemplateMode": "Полный шаблон",
+    "quickParamsMode": "Быстрые параметры",
+    "loadedFileHint": "Файл загружен - изменения применяются к реальному содержимому.",
+    "templateHint": "Можно работать как с шаблоном или загрузить ваш файл для точного редактирования.",
+    "parseError": "Ошибка чтения",
+    "logSearchPlaceholder": "Поиск по логу: plugin name, player, stack trace...",
+    "allSources": "Все источники",
+    "all": "Все",
+    "onlyProblems": "Только проблемы",
+    "stacktraces": "Стектрейсы",
+    "shownRows": "Показано строк:",
+    "copyFiltered": "Копировать выборку",
+    "downloadFiltered": "Скачать выборку",
+    "nothingFound": "Ничего не найдено - поменяйте фильтры или строку поиска.",
+    "copied": "Скопировано",
+    "copy": "Копировать",
+    "download": "Скачать"
   }
 }

@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo, useRef, useState } from 'react'
+import { useLocale, useTranslations } from 'next-intl'
 import { Copy, Download, ShieldCheck, Upload } from 'lucide-react'
 import { parseDocument } from 'yaml'
 import { useCopyFeedback } from '@/hooks/useCopyFeedback'
@@ -229,7 +230,10 @@ function toYaml(value: unknown, depth = 0): string[] {
 }
 
 export function ServerSettingsView() {
+  const t = useTranslations('serverPage')
+  const locale = useLocale()
   const [query, setQuery] = useState('')
+  const [editorMode, setEditorMode] = useState<'full' | 'quick'>('full')
   const [selectedFile, setSelectedFile] = useState<ServerConfigFile>('server.properties')
   const initialValues = useMemo<ValueMap>(() => {
     const entries = SERVER_SETTINGS.map((s) => [s.id, s.value] as const)
@@ -431,18 +435,16 @@ export function ServerSettingsView() {
     <section className="mx-auto flex min-h-0 w-full max-w-[min(92rem,calc(100vw-0.75rem))] flex-1 flex-col gap-2 overflow-hidden px-2 pb-1 pt-0.5 sm:px-3 sm:pb-2 sm:pt-1">
       {!customFile && !logFile ? (
         <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/10 p-3 text-[12px] text-emerald-100">
-          <p className="font-semibold">Панель главных параметров сервера</p>
+          <p className="font-semibold">{t('title')}</p>
           <p className="mt-1 text-emerald-100/80">
-            Меняйте ключевые настройки Paper/Spigot/Bukkit и сразу копируйте готовые блоки
-            для каждого файла. Это рабочий черновик под ваши конфиги из `dddd`.
+            {t('subtitle')}
           </p>
         </div>
       ) : !logFile ? (
         <div className="rounded-xl border border-sky-500/25 bg-sky-500/10 p-3 text-[12px] text-sky-100">
-          <p className="font-semibold">Редактор произвольного файла</p>
+          <p className="font-semibold">{t('customEditorTitle')}</p>
           <p className="mt-1 text-sky-100/85">
-            Открыт файл не из списка шаблонов - ниже весь текст для правки на всю ширину. Загрузите
-            `server.properties` или `paper-*.yml` по имени, чтобы вернуться к форме полей.
+            {t('customEditorHint')}
           </p>
         </div>
       ) : null}
@@ -453,7 +455,7 @@ export function ServerSettingsView() {
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Поиск параметра: motd, anti-xray, max-players..."
+              placeholder={t('searchPlaceholder')}
               className="min-w-[18rem] rounded-lg border border-white/10 bg-[#0d0f14] px-3 py-2 text-xs text-zinc-200 outline-none focus:border-sky-500/60"
             />
           ) : logFile ? (
@@ -465,19 +467,19 @@ export function ServerSettingsView() {
                 onClick={() => setLogFile(null)}
                 className="rounded border border-white/15 bg-black/40 px-2 py-1 text-[11px] text-zinc-200 hover:bg-white/10"
               >
-                К панели шаблонов
+                {t('backToTemplates')}
               </button>
             </div>
           ) : (
             <div className="flex min-h-[2.5rem] flex-wrap items-center gap-2 rounded-lg border border-white/10 bg-[#0d0f14] px-3 py-2 text-xs text-zinc-300">
-              <span className="text-zinc-500">Открыт файл:</span>
+              <span className="text-zinc-500">{t('openedFile')}</span>
               <span className="font-mono text-sky-200">{customFile?.name ?? ''}</span>
               <button
                 type="button"
                 onClick={() => setCustomFile(null)}
                 className="rounded border border-white/15 bg-black/40 px-2 py-1 text-[11px] text-zinc-200 hover:bg-white/10"
               >
-                К панели шаблонов
+                {t('backToTemplates')}
               </button>
             </div>
           )}
@@ -502,7 +504,7 @@ export function ServerSettingsView() {
             className="inline-flex items-center justify-center gap-1 rounded border border-white/15 bg-black/30 px-3 py-2 text-[12px] text-zinc-200 hover:bg-white/10"
           >
             <Upload className="h-3.5 w-3.5" />
-            Загрузить файл
+            {t('uploadFile')}
           </button>
           <header className="flex flex-wrap items-center gap-2">
             <input
@@ -526,7 +528,7 @@ export function ServerSettingsView() {
                 <input
                   value={logQuery}
                   onChange={(e) => setLogQuery(e.target.value)}
-                  placeholder="Поиск по логу: plugin name, player, stack trace..."
+                  placeholder={t('logSearchPlaceholder')}
                   className="min-w-[18rem] rounded-lg border border-white/10 bg-[#0d0f14] px-3 py-2 text-xs text-zinc-200 outline-none focus:border-violet-500/60"
                 />
                 <select
@@ -534,7 +536,9 @@ export function ServerSettingsView() {
                   onChange={(e) => setLogSource(e.target.value)}
                   className="rounded-lg border border-white/10 bg-[#0d0f14] px-2 py-2 text-xs text-zinc-200 outline-none focus:border-violet-500/60"
                 >
-                  <option value="all">Все источники ({parsedLogLines.length})</option>
+                  <option value="all">
+                    {t('allSources')} ({parsedLogLines.length})
+                  </option>
                   {topSources.map((source) => (
                     <option key={source} value={source}>
                       {source} ({logSourceCounts[source] || 0})
@@ -557,7 +561,7 @@ export function ServerSettingsView() {
                     }}
                     className="rounded border border-white/15 bg-black/30 px-2 py-1 text-[11px] text-zinc-200 hover:bg-white/10"
                   >
-                    Все
+                    {t('all')}
                   </button>
                   <button
                     type="button"
@@ -572,14 +576,14 @@ export function ServerSettingsView() {
                     }
                     className="rounded border border-red-500/35 bg-red-500/10 px-2 py-1 text-[11px] text-red-200 hover:bg-red-500/20"
                   >
-                    Только проблемы
+                    {t('onlyProblems')}
                   </button>
                   <button
                     type="button"
                     onClick={() => setLogQuery('Exception')}
                     className="rounded border border-violet-500/35 bg-violet-500/10 px-2 py-1 text-[11px] text-violet-200 hover:bg-violet-500/20"
                   >
-                    Стектрейсы
+                    {t('stacktraces')}
                   </button>
                 </div>
               </div>
@@ -607,8 +611,9 @@ export function ServerSettingsView() {
             <div className="flex min-h-0 flex-1 flex-col rounded-lg border border-white/[0.07] bg-black/20 p-2">
               <div className="mb-2 flex flex-wrap items-center justify-between gap-2 text-[11px]">
                 <div className="text-zinc-400">
-                  Показано строк: <span className="font-mono text-zinc-200">{filteredLogLines.length}</span>{' '}
-                  из <span className="font-mono text-zinc-200">{parsedLogLines.length}</span>
+                  {t('shownRows')}{' '}
+                  <span className="font-mono text-zinc-200">{filteredLogLines.length}</span> /{' '}
+                  <span className="font-mono text-zinc-200">{parsedLogLines.length}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <button
@@ -620,7 +625,7 @@ export function ServerSettingsView() {
                     className="inline-flex items-center gap-1 rounded border border-white/15 bg-black/30 px-2 py-1 text-[11px] text-zinc-200 hover:bg-white/10"
                   >
                     <Copy className="h-3 w-3" />
-                    {copiedFile === '__log__' ? 'Скопировано' : 'Копировать выборку'}
+                    {copiedFile === '__log__' ? t('copied') : t('copyFiltered')}
                   </button>
                   <button
                     type="button"
@@ -633,7 +638,7 @@ export function ServerSettingsView() {
                     className="inline-flex items-center gap-1 rounded border border-white/15 bg-black/30 px-2 py-1 text-[11px] text-zinc-200 hover:bg-white/10"
                   >
                     <Download className="h-3 w-3" />
-                    Скачать выборку
+                    {t('downloadFiltered')}
                   </button>
                 </div>
               </div>
@@ -646,7 +651,7 @@ export function ServerSettingsView() {
               >
                 {filteredLogLines.length === 0 ? (
                   <div className="p-3 text-[12px] text-zinc-500">
-                    Ничего не найдено - поменяйте фильтры или строку поиска.
+                    {t('nothingFound')}
                   </div>
                 ) : (
                   <div className="relative" style={{ height: `${totalVirtualHeight}px` }}>
@@ -689,8 +694,8 @@ export function ServerSettingsView() {
                 >
                   <Copy className="h-3 w-3" />
                   {copiedFile === '__custom__' && copiedId === customFile.text
-                    ? 'Скопировано'
-                    : 'Копировать'}
+                    ? t('copied')
+                    : t('copy')}
                 </button>
                 <button
                   type="button"
@@ -698,7 +703,7 @@ export function ServerSettingsView() {
                   className="inline-flex items-center gap-1 rounded border border-white/15 bg-black/30 px-2 py-1 text-[11px] text-zinc-200 hover:bg-white/10"
                 >
                   <Download className="h-3 w-3" />
-                  Скачать
+                  {t('download')}
                 </button>
               </div>
               <textarea
@@ -712,77 +717,114 @@ export function ServerSettingsView() {
         ) : (
           <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 pt-3 xl:grid-cols-[1.25fr_1fr]">
             <div className="min-h-0 overflow-y-auto pr-1">
+              <div className="mb-2 inline-flex rounded-lg border border-white/10 bg-[#0d0f14] p-0.5">
+                <button
+                  type="button"
+                  onClick={() => setEditorMode('full')}
+                  className={`rounded px-2 py-1 text-[11px] ${
+                    editorMode === 'full'
+                      ? 'bg-sky-500/20 text-sky-100'
+                      : 'text-zinc-400 hover:bg-white/5'
+                  }`}
+                >
+                  {t('fullTemplateMode')}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEditorMode('quick')}
+                  className={`rounded px-2 py-1 text-[11px] ${
+                    editorMode === 'quick'
+                      ? 'bg-sky-500/20 text-sky-100'
+                      : 'text-zinc-400 hover:bg-white/5'
+                  }`}
+                >
+                  {t('quickParamsMode')}
+                </button>
+              </div>
               {rawFiles[selectedFile] ? (
                 <p className="mb-2 text-[10px] text-emerald-300/90">
-                  Файл загружен - изменения применяются к реальному содержимому.
+                  {t('loadedFileHint')}
                 </p>
               ) : (
                 <p className="mb-2 text-[10px] text-zinc-500">
-                  Можно работать как с шаблоном или загрузить ваш файл для точного редактирования.
+                  {t('templateHint')}
                 </p>
               )}
               {parseErrors[selectedFile] ? (
                 <p className="mb-2 rounded border border-red-500/30 bg-red-900/30 px-2 py-1 text-[10px] text-red-200">
-                  Ошибка чтения: {parseErrors[selectedFile]}
+                  {t('parseError')}: {parseErrors[selectedFile]}
                 </p>
               ) : null}
-              <div className="space-y-1">
-                {filtered.map((row) => {
-                  const current = values[row.id]
-                  return (
-                    <label
-                      key={row.id}
-                      className="flex flex-col gap-1 border-b border-white/[0.06] py-2 last:border-b-0"
-                    >
-                      <span className="text-[12px] font-medium text-zinc-100">{row.label}</span>
-                      <span className="font-mono text-[10px] text-zinc-500">{row.keyPath}</span>
-                      {row.type === 'boolean' ? (
-                        <input
-                          type="checkbox"
-                          checked={Boolean(current)}
-                          onChange={(e) =>
-                            setValues((prev) => ({ ...prev, [row.id]: e.target.checked }))
-                          }
-                          className="mt-1 h-4 w-4 rounded border-white/20 bg-[#0d0f14] text-sky-500"
-                        />
-                      ) : row.type === 'select' ? (
-                        <select
-                          value={String(current)}
-                          onChange={(e) =>
-                            setValues((prev) => ({ ...prev, [row.id]: e.target.value }))
-                          }
-                          className="rounded border border-white/10 bg-[#0d0f14] px-2 py-1.5 text-xs text-zinc-200 outline-none focus:border-sky-500/60"
-                        >
-                          {row.options?.map((o) => (
-                            <option key={o} value={o}>
-                              {o}
-                            </option>
-                          ))}
-                        </select>
-                      ) : row.type === 'number' ? (
-                        <input
-                          type="number"
-                          value={Number(current)}
-                          onChange={(e) =>
-                            setValues((prev) => ({ ...prev, [row.id]: Number(e.target.value) }))
-                          }
-                          className="rounded border border-white/10 bg-[#0d0f14] px-2 py-1.5 text-xs text-zinc-200 outline-none focus:border-sky-500/60"
-                        />
-                      ) : (
-                        <input
-                          type="text"
-                          value={String(current)}
-                          onChange={(e) =>
-                            setValues((prev) => ({ ...prev, [row.id]: e.target.value }))
-                          }
-                          className="rounded border border-white/10 bg-[#0d0f14] px-2 py-1.5 text-xs text-zinc-200 outline-none focus:border-sky-500/60"
-                        />
-                      )}
-                      <span className="text-[11px] text-zinc-400">{row.description}</span>
-                    </label>
-                  )
-                })}
-              </div>
+              {editorMode === 'full' ? (
+                <textarea
+                  value={exports[selectedFile]}
+                  onChange={(e) => setRawFiles((prev) => ({ ...prev, [selectedFile]: e.target.value }))}
+                  spellCheck={false}
+                  className="min-h-[min(70vh,calc(100vh-15rem))] w-full resize-y rounded border border-white/10 bg-[#0d0f14] px-2 py-1.5 font-mono text-[11px] leading-relaxed text-zinc-200 outline-none focus:border-sky-500/50"
+                />
+              ) : (
+                <div className="space-y-1">
+                  {filtered.map((row) => {
+                    const current = values[row.id]
+                    return (
+                      <label
+                        key={row.id}
+                        className="flex flex-col gap-1 border-b border-white/[0.06] py-2 last:border-b-0"
+                      >
+                        <span className="text-[12px] font-medium text-zinc-100">
+                          {locale === 'ru' ? row.label : row.keyPath}
+                        </span>
+                        <span className="font-mono text-[10px] text-zinc-500">{row.keyPath}</span>
+                        {row.type === 'boolean' ? (
+                          <input
+                            type="checkbox"
+                            checked={Boolean(current)}
+                            onChange={(e) =>
+                              setValues((prev) => ({ ...prev, [row.id]: e.target.checked }))
+                            }
+                            className="mt-1 h-4 w-4 rounded border-white/20 bg-[#0d0f14] text-sky-500"
+                          />
+                        ) : row.type === 'select' ? (
+                          <select
+                            value={String(current)}
+                            onChange={(e) =>
+                              setValues((prev) => ({ ...prev, [row.id]: e.target.value }))
+                            }
+                            className="rounded border border-white/10 bg-[#0d0f14] px-2 py-1.5 text-xs text-zinc-200 outline-none focus:border-sky-500/60"
+                          >
+                            {row.options?.map((o) => (
+                              <option key={o} value={o}>
+                                {o}
+                              </option>
+                            ))}
+                          </select>
+                        ) : row.type === 'number' ? (
+                          <input
+                            type="number"
+                            value={Number(current)}
+                            onChange={(e) =>
+                              setValues((prev) => ({ ...prev, [row.id]: Number(e.target.value) }))
+                            }
+                            className="rounded border border-white/10 bg-[#0d0f14] px-2 py-1.5 text-xs text-zinc-200 outline-none focus:border-sky-500/60"
+                          />
+                        ) : (
+                          <input
+                            type="text"
+                            value={String(current)}
+                            onChange={(e) =>
+                              setValues((prev) => ({ ...prev, [row.id]: e.target.value }))
+                            }
+                            className="rounded border border-white/10 bg-[#0d0f14] px-2 py-1.5 text-xs text-zinc-200 outline-none focus:border-sky-500/60"
+                          />
+                        )}
+                        {locale === 'ru' ? (
+                          <span className="text-[11px] text-zinc-400">{row.description}</span>
+                        ) : null}
+                      </label>
+                    )
+                  })}
+                </div>
+              )}
             </div>
 
             <div className="flex min-h-0 flex-col rounded-lg border border-white/[0.07] bg-black/20 p-2">
@@ -801,8 +843,8 @@ export function ServerSettingsView() {
                 >
                   <Copy className="h-3 w-3" />
                   {copiedFile === selectedFile && copiedId === exports[selectedFile]
-                    ? 'Скопировано'
-                    : 'Копировать'}
+                    ? t('copied')
+                    : t('copy')}
                 </button>
                 <button
                   type="button"
@@ -810,7 +852,7 @@ export function ServerSettingsView() {
                   className="inline-flex items-center gap-1 rounded border border-white/15 bg-black/30 px-2 py-1 text-[11px] text-zinc-200 hover:bg-white/10"
                 >
                   <Download className="h-3 w-3" />
-                  Скачать
+                  {t('download')}
                 </button>
               </div>
               <textarea
