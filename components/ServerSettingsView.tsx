@@ -27,6 +27,21 @@ type LogLine = {
   level: LogLevel
   source: string
 }
+type LogProblemKind =
+  | 'auth'
+  | 'realms'
+  | 'class_missing'
+  | 'dependency'
+  | 'version'
+  | 'resourcepack'
+  | 'settings'
+  | 'network'
+  | 'other'
+type LogProblem = {
+  kind: LogProblemKind
+  line: number
+  text: string
+}
 
 function basenameLower(name: string): string {
   const s = name.replace(/\\/g, '/')
@@ -118,6 +133,64 @@ function levelRowClass(level: LogLevel): string {
   if (level === 'info') return 'border-sky-500/20 bg-sky-500/[0.04]'
   if (level === 'debug') return 'border-violet-500/20 bg-violet-500/[0.04]'
   return 'border-white/10 bg-white/[0.02]'
+}
+
+function classifyProblemKind(line: string): LogProblemKind {
+  const s = line.toLowerCase()
+  if (
+    s.includes('invalidcredentialsexception') ||
+    s.includes('status: 401') ||
+    s.includes('failed to fetch user properties') ||
+    s.includes('failed to retrieve profile key pair')
+  ) {
+    return 'auth'
+  }
+  if (s.includes('realms')) return 'realms'
+  if (s.includes('classnotfoundexception') || s.includes('error loading class')) {
+    return 'class_missing'
+  }
+  if (s.includes('отсутствует') || s.includes('recommends') || s.includes('modmenu')) {
+    return 'dependency'
+  }
+  if (
+    s.includes("isn't compatible with loader") ||
+    s.includes('could not parse version') ||
+    s.includes('semver')
+  ) {
+    return 'version'
+  }
+  if (s.includes('resource pack') || s.includes('resourcepack')) return 'resourcepack'
+  if (s.includes('outside of range') || s.includes('error saving option')) {
+    return 'settings'
+  }
+  if (s.includes("couldn't connect") || s.includes('connection') || s.includes('timeout')) {
+    return 'network'
+  }
+  return 'other'
+}
+
+function kindBadgeClass(kind: LogProblemKind): string {
+  if (kind === 'auth') return 'border-red-500/35 bg-red-500/10 text-red-100'
+  if (kind === 'realms') return 'border-rose-500/35 bg-rose-500/10 text-rose-100'
+  if (kind === 'class_missing') return 'border-orange-500/35 bg-orange-500/10 text-orange-100'
+  if (kind === 'dependency') return 'border-amber-500/35 bg-amber-500/10 text-amber-100'
+  if (kind === 'version') return 'border-yellow-500/35 bg-yellow-500/10 text-yellow-100'
+  if (kind === 'resourcepack') return 'border-cyan-500/35 bg-cyan-500/10 text-cyan-100'
+  if (kind === 'settings') return 'border-violet-500/35 bg-violet-500/10 text-violet-100'
+  if (kind === 'network') return 'border-blue-500/35 bg-blue-500/10 text-blue-100'
+  return 'border-zinc-500/35 bg-zinc-500/10 text-zinc-200'
+}
+
+function kindPriority(kind: LogProblemKind): number {
+  if (kind === 'auth') return 1
+  if (kind === 'realms') return 2
+  if (kind === 'class_missing') return 3
+  if (kind === 'dependency') return 4
+  if (kind === 'version') return 5
+  if (kind === 'resourcepack') return 6
+  if (kind === 'settings') return 7
+  if (kind === 'network') return 8
+  return 9
 }
 
 function setAtPath(root: Record<string, unknown>, path: string, value: unknown) {
@@ -379,6 +452,106 @@ export function ServerSettingsView() {
     })
   }, [logLevelFilter, logQuery, logSource, parsedLogLines])
 
+  const logInsights = useMemo(() => {
+    const mods: string[] = []
+    const resourcePacks = new Set<string>()
+    const problems: LogProblem[] = []
+    let readingMods = false
+
+    for (const row of parsedLogLines) {
+      const line = row.raw
+      if (/loading\s+\d+\s+mods:/i.test(line)) {
+        readingMods = true
+        continue
+      }
+      if (readingMods) {
+        const m = line.match(/^\s*-\s+([a-z0-9_.+-]+)\s+(.+)$/i)
+        if (m) {
+          mods.push(`${m[1]} ${m[2]}`.trim())
+          continue
+        }
+        if (!line.trim().startsWith('|') && !line.trim().startsWith('\\') && line.trim() !== '') {
+          readingMods = false
+        }
+      }
+
+      const reloadIdx = line.indexOf('Reloading ResourceManager:')
+      if (reloadIdx >= 0) {
+        const list = line
+          .slice(reloadIdx + 'Reloading ResourceManager:'.length)
+          .split(',')
+          .map((v) => v.trim())
+          .filter(Boolean)
+        for (const entry of list) {
+          if (entry.startsWith('file/')) {
+            resourcePacks.add(entry.replace(/^file\//, ''))
+            continue
+          }
+          if (
+            entry === 'programmer_art' ||
+            entry.includes('programmer_art') ||
+            entry.includes('resource')
+          ) {
+            resourcePacks.add(entry)
+          }
+        }
+      }
+
+      if (row.level === 'error' || row.level === 'warn') {
+        const s = line.toLowerCase()
+        const isInteresting =
+          s.includes('exception') ||
+          s.includes('failed') ||
+          s.includes('error') ||
+          s.includes('could not') ||
+          s.includes("couldn't") ||
+          s.includes('outside of range') ||
+          s.includes('not found') ||
+          s.includes('отсутствует') ||
+          s.includes('не найден')
+        if (isInteresting) {
+          problems.push({
+            kind: classifyProblemKind(line),
+            line: row.idx,
+            text: line.trim(),
+          })
+        }
+      }
+    }
+
+    const uniqueMods = [...new Set(mods)]
+    const uniqueProblems = problems
+      .filter((p, i, arr) => arr.findIndex((x) => x.text === p.text) === i)
+      .sort((a, b) => {
+        const pa = kindPriority(a.kind)
+        const pb = kindPriority(b.kind)
+        if (pa !== pb) return pa - pb
+        return a.line - b.line
+      })
+      .slice(0, 80)
+    return {
+      mods: uniqueMods,
+      resourcePacks: [...resourcePacks],
+      problems: uniqueProblems,
+    }
+  }, [parsedLogLines])
+
+  const problemCountsByKind = useMemo(() => {
+    const counts: Record<LogProblemKind, number> = {
+      auth: 0,
+      realms: 0,
+      class_missing: 0,
+      dependency: 0,
+      version: 0,
+      resourcepack: 0,
+      settings: 0,
+      network: 0,
+      other: 0,
+    }
+    for (const p of logInsights.problems) counts[p.kind] += 1
+    return counts
+  }, [logInsights.problems])
+
   const rowHeight = 28
   const overscan = 30
   const viewportHeight = 560
@@ -539,6 +712,105 @@ export function ServerSettingsView() {
 
         {logFile ? (
           <div className="flex min-h-0 flex-1 flex-col gap-2 pt-3">
+            <div className="grid shrink-0 grid-cols-1 gap-2 xl:grid-cols-3">
+              <div className="rounded-lg border border-red-500/20 bg-red-500/[0.05] p-2">
+                <div className="mb-1 text-[11px] font-semibold text-red-200">
+                  {t('logIssuesTitle')} ({logInsights.problems.length})
+                </div>
+                <div className="max-h-40 space-y-1 overflow-auto pr-1 text-[11px]">
+                  {logInsights.problems.length === 0 ? (
+                    <p className="text-zinc-400">{t('logIssuesEmpty')}</p>
+                  ) : (
+                    <>
+                      {(
+                        [
+                          'auth',
+                          'realms',
+                          'class_missing',
+                          'dependency',
+                          'version',
+                          'resourcepack',
+                          'settings',
+                          'network',
+                          'other',
+                        ] as LogProblemKind[]
+                      )
+                        .filter((k) => problemCountsByKind[k] > 0)
+                        .map((k) => (
+                          <div key={k} className="flex items-center justify-between gap-2">
+                            <span
+                              className={`rounded border px-1.5 py-0.5 text-[10px] ${kindBadgeClass(k)}`}
+                            >
+                              {t(`logIssueKind.${k}`)}
+                            </span>
+                            <span className="font-mono text-zinc-300">{problemCountsByKind[k]}</span>
+                          </div>
+                        ))}
+                    </>
+                  )}
+                </div>
+              </div>
+
+              <div className="rounded-lg border border-white/10 bg-black/20 p-2">
+                <div className="mb-1 text-[11px] font-semibold text-sky-200">
+                  {t('logModsTitle')} ({logInsights.mods.length})
+                </div>
+                <div className="max-h-40 space-y-1 overflow-auto pr-1 font-mono text-[11px] text-zinc-300">
+                  {logInsights.mods.length === 0 ? (
+                    <p className="font-sans text-zinc-400">{t('logModsEmpty')}</p>
+                  ) : (
+                    logInsights.mods.map((m) => (
+                      <div key={m} className="truncate">
+                        {m}
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              <div className="rounded-lg border border-white/10 bg-black/20 p-2">
+                <div className="mb-1 text-[11px] font-semibold text-cyan-200">
+                  {t('logResourcepacksTitle')} ({logInsights.resourcePacks.length})
+                </div>
+                <div className="max-h-40 space-y-1 overflow-auto pr-1 font-mono text-[11px] text-zinc-300">
+                  {logInsights.resourcePacks.length === 0 ? (
+                    <p className="font-sans text-zinc-400">{t('logResourcepacksEmpty')}</p>
+                  ) : (
+                    logInsights.resourcePacks.map((p) => (
+                      <div key={p} className="truncate">
+                        {p}
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {logInsights.problems.length > 0 ? (
+              <div className="rounded-lg border border-white/[0.08] bg-[#10131d] p-2">
+                <div className="mb-1 text-[11px] font-semibold text-zinc-200">
+                  {t('logIssueHintsTitle')}
+                </div>
+                <div className="max-h-44 space-y-1 overflow-auto pr-1 text-[11px]">
+                  {logInsights.problems.slice(0, 12).map((p) => (
+                    <div
+                      key={`${p.line}-${p.text}`}
+                      className="rounded border border-white/10 bg-black/20 px-2 py-1"
+                    >
+                      <div className="mb-0.5 flex items-center gap-2">
+                        <span className={`rounded border px-1.5 py-0.5 text-[10px] ${kindBadgeClass(p.kind)}`}>
+                          {t(`logIssueKind.${p.kind}`)}
+                        </span>
+                        <span className="font-mono text-zinc-400">L{p.line}</span>
+                      </div>
+                      <p className="line-clamp-2 font-mono text-[10px] text-zinc-300">{p.text}</p>
+                      <p className="mt-0.5 text-zinc-400">{t(`logIssueHint.${p.kind}`)}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+
             <div className="sticky top-0 z-20 grid grid-cols-1 gap-2 rounded-lg border border-white/[0.08] bg-[#10131d]/95 p-2 backdrop-blur xl:grid-cols-[1fr_auto]">
               <div className="grid grid-cols-1 gap-2 lg:grid-cols-[1fr_auto_auto]">
                 <input
