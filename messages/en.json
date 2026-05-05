@@ -107,10 +107,21 @@
     "logIssuesTitle": "Startup issues",
     "logIssueHintsTitle": "Hints for detected issues",
     "logIssuesEmpty": "No obvious startup issues found in this log.",
+    "logFileLabel": "Log:",
     "logModsTitle": "Mods",
+    "logModsHint": "Top-level Fabric list only (no JAR-in-JAR). Entries java and minecraft are hidden.",
     "logModsEmpty": "No mod list found in this log.",
     "logResourcepacksTitle": "Resource packs",
+    "logResourcepacksHint": "Only file/ packs from your resource packs folder plus built-in programmer_art or high_contrast.",
     "logResourcepacksEmpty": "No resource packs found in this log.",
+    "logResourcePackOverlayOnly": "programmer_art overlay from mods only (built-in Programmer Art pack not enabled)",
+    "logLevel": {
+      "error": "Errors",
+      "warn": "Warnings",
+      "info": "Info",
+      "debug": "Debug",
+      "other": "Other"
+    },
     "logIssueKind": {
       "auth": "Authentication",
       "realms": "Realms",

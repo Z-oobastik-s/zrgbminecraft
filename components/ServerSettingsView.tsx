@@ -111,13 +111,11 @@ function detectLogSource(line: string): string {
   return 'core'
 }
 
-function levelLabel(level: LogLevel): string {
-  if (level === 'error') return 'Ошибки'
-  if (level === 'warn') return 'Предупреждения'
-  if (level === 'info') return 'Инфо'
-  if (level === 'debug') return 'Debug'
-  return 'Остальное'
-}
+/** Fabric mod tree: only lines `\t- modId version` are root mods; JAR-in-JAR use `|--` / `\--`. */
+const FABRIC_ROOT_MOD_LINE = /^\t-\s+([A-Za-z0-9_.+-]+)\s+(\S.+)$/
+
+/** Not mods in Fabric dependency listing */
+const FABRIC_SKIP_ROOT_MOD_IDS = new Set(['java', 'minecraft'])
 
 function levelBadgeClass(level: LogLevel): string {
   if (level === 'error') return 'border-red-500/35 bg-red-500/8 text-red-100'
@@ -327,9 +325,7 @@ export function ServerSettingsView() {
     debug: false,
     other: true,
   })
-  const [logScrollTop, setLogScrollTop] = useState(0)
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const logViewportRef = useRef<HTMLDivElement>(null)
   const { copiedId, copy } = useCopyFeedback(1800)
 
   const filtered = useMemo(() => {
@@ -457,6 +453,33 @@ export function ServerSettingsView() {
     const resourcePacks = new Set<string>()
     const problems: LogProblem[] = []
     let readingMods = false
+    /** programmer_art as mod namespace overlay: `something_programmer_art` */
+    let sawProgrammerArtOverlay = false
+    let hadBuiltinProgrammerArt = false
+
+    const parseReloadingResourcePacks = (line: string) => {
+      const reloadIdx = line.indexOf('Reloading ResourceManager:')
+      if (reloadIdx < 0) return
+      const list = line
+        .slice(reloadIdx + 'Reloading ResourceManager:'.length)
+        .split(',')
+        .map((v) => v.trim())
+        .filter(Boolean)
+      for (const entry of list) {
+        if (entry.startsWith('file/')) {
+          resourcePacks.add(entry.replace(/^file\//, ''))
+          continue
+        }
+        if (entry === 'programmer_art' || entry === 'high_contrast') {
+          resourcePacks.add(entry)
+          if (entry === 'programmer_art') hadBuiltinProgrammerArt = true
+          continue
+        }
+        if (entry.endsWith('_programmer_art')) {
+          sawProgrammerArtOverlay = true
+        }
+      }
+    }
 
     for (const row of parsedLogLines) {
       const line = row.raw
@@ -465,37 +488,32 @@ export function ServerSettingsView() {
         continue
       }
       if (readingMods) {
-        const m = line.match(/^\s*-\s+([a-z0-9_.+-]+)\s+(.+)$/i)
-        if (m) {
-          mods.push(`${m[1]} ${m[2]}`.trim())
+        const trimmed = line.trimStart()
+        const isFabricTreeLine =
+          /^\|[\t ]*--/.test(trimmed) || /^\\--/.test(trimmed)
+        if (isFabricTreeLine) {
           continue
         }
-        if (!line.trim().startsWith('|') && !line.trim().startsWith('\\') && line.trim() !== '') {
+        const fm = line.match(FABRIC_ROOT_MOD_LINE)
+        if (fm) {
+          const id = fm[1]!.toLowerCase()
+          if (!FABRIC_SKIP_ROOT_MOD_IDS.has(id)) {
+            mods.push(`${fm[1]} ${fm[2]!.trim()}`)
+          }
+          continue
+        }
+        const isNewTimestampLine = /^\[\d{2}:\d{2}:\d{2}\]/.test(line.trim())
+        if (isNewTimestampLine) {
+          readingMods = false
+          parseReloadingResourcePacks(line)
+          continue
+        }
+        if (trimmed !== '' && !trimmed.startsWith('-')) {
           readingMods = false
         }
       }
 
-      const reloadIdx = line.indexOf('Reloading ResourceManager:')
-      if (reloadIdx >= 0) {
-        const list = line
-          .slice(reloadIdx + 'Reloading ResourceManager:'.length)
-          .split(',')
-          .map((v) => v.trim())
-          .filter(Boolean)
-        for (const entry of list) {
-          if (entry.startsWith('file/')) {
-            resourcePacks.add(entry.replace(/^file\//, ''))
-            continue
-          }
-          if (
-            entry === 'programmer_art' ||
-            entry.includes('programmer_art') ||
-            entry.includes('resource')
-          ) {
-            resourcePacks.add(entry)
-          }
-        }
-      }
+      parseReloadingResourcePacks(line)
 
       if (row.level === 'error' || row.level === 'warn') {
         const s = line.toLowerCase()
@@ -519,6 +537,10 @@ export function ServerSettingsView() {
       }
     }
 
+    if (sawProgrammerArtOverlay && !hadBuiltinProgrammerArt) {
+      resourcePacks.add('__rp_programmer_art_overlay_only__')
+    }
+
     const uniqueMods = [...new Set(mods)]
     const uniqueProblems = problems
       .filter((p, i, arr) => arr.findIndex((x) => x.text === p.text) === i)
@@ -531,7 +553,7 @@ export function ServerSettingsView() {
       .slice(0, 80)
     return {
       mods: uniqueMods,
-      resourcePacks: [...resourcePacks],
+      resourcePacks: [...resourcePacks].sort((a, b) => a.localeCompare(b)),
       problems: uniqueProblems,
     }
   }, [parsedLogLines])
@@ -551,17 +573,6 @@ export function ServerSettingsView() {
     for (const p of logInsights.problems) counts[p.kind] += 1
     return counts
   }, [logInsights.problems])
-
-  const rowHeight = 28
-  const overscan = 30
-  const viewportHeight = 560
-  const totalVirtualHeight = filteredLogLines.length * rowHeight
-  const startIndex = Math.max(0, Math.floor(logScrollTop / rowHeight) - overscan)
-  const endIndex = Math.min(
-    filteredLogLines.length,
-    startIndex + Math.ceil(viewportHeight / rowHeight) + overscan * 2
-  )
-  const visibleLogLines = filteredLogLines.slice(startIndex, endIndex)
 
   const handleFileLoaded = async (f: File) => {
     const text = await f.text()
@@ -604,7 +615,6 @@ export function ServerSettingsView() {
       setCustomFile(null)
       setLogQuery('')
       setLogSource('all')
-      setLogScrollTop(0)
       setLogLevelFilter({
         error: true,
         warn: true,
@@ -621,7 +631,7 @@ export function ServerSettingsView() {
   }
 
   return (
-    <section className="mx-auto flex min-h-0 w-full max-w-[min(92rem,calc(100vw-0.75rem))] flex-1 flex-col gap-2 overflow-hidden px-2 pb-1 pt-0.5 sm:px-3 sm:pb-2 sm:pt-1">
+    <section className="flex min-h-0 w-full flex-1 flex-col gap-2 overflow-hidden">
       {!customFile && !logFile ? (
         <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/10 p-3 text-[12px] text-emerald-100">
           <p className="font-semibold">{t('title')}</p>
@@ -649,7 +659,7 @@ export function ServerSettingsView() {
             />
           ) : logFile ? (
             <div className="flex min-h-[2.5rem] flex-wrap items-center gap-2 rounded-lg border border-white/10 bg-[#0d0f14] px-3 py-2 text-xs text-zinc-300">
-              <span className="text-zinc-500">Лог:</span>
+              <span className="text-zinc-500">{t('logFileLabel')}</span>
               <span className="font-mono text-violet-200">{logFile.name}</span>
               <button
                 type="button"
@@ -711,270 +721,275 @@ export function ServerSettingsView() {
         </div>
 
         {logFile ? (
-          <div className="flex min-h-0 flex-1 flex-col gap-2 pt-3">
-            <div className="grid shrink-0 grid-cols-1 gap-2 xl:grid-cols-3">
-              <div className="rounded-lg border border-red-500/20 bg-red-500/[0.05] p-2">
-                <div className="mb-1 text-[11px] font-semibold text-red-200">
-                  {t('logIssuesTitle')} ({logInsights.problems.length})
-                </div>
-                <div className="max-h-40 space-y-1 overflow-auto pr-1 text-[11px]">
-                  {logInsights.problems.length === 0 ? (
-                    <p className="text-zinc-400">{t('logIssuesEmpty')}</p>
-                  ) : (
-                    <>
-                      {(
-                        [
-                          'auth',
-                          'realms',
-                          'class_missing',
-                          'dependency',
-                          'version',
-                          'resourcepack',
-                          'settings',
-                          'network',
-                          'other',
-                        ] as LogProblemKind[]
-                      )
-                        .filter((k) => problemCountsByKind[k] > 0)
-                        .map((k) => (
-                          <div key={k} className="flex items-center justify-between gap-2">
-                            <span
-                              className={`rounded border px-1.5 py-0.5 text-[10px] ${kindBadgeClass(k)}`}
-                            >
-                              {t(`logIssueKind.${k}`)}
-                            </span>
-                            <span className="font-mono text-zinc-300">{problemCountsByKind[k]}</span>
-                          </div>
-                        ))}
-                    </>
-                  )}
-                </div>
-              </div>
-
-              <div className="rounded-lg border border-white/10 bg-black/20 p-2">
-                <div className="mb-1 text-[11px] font-semibold text-sky-200">
-                  {t('logModsTitle')} ({logInsights.mods.length})
-                </div>
-                <div className="max-h-40 space-y-1 overflow-auto pr-1 font-mono text-[11px] text-zinc-300">
-                  {logInsights.mods.length === 0 ? (
-                    <p className="font-sans text-zinc-400">{t('logModsEmpty')}</p>
-                  ) : (
-                    logInsights.mods.map((m) => (
-                      <div key={m} className="truncate">
-                        {m}
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-
-              <div className="rounded-lg border border-white/10 bg-black/20 p-2">
-                <div className="mb-1 text-[11px] font-semibold text-cyan-200">
-                  {t('logResourcepacksTitle')} ({logInsights.resourcePacks.length})
-                </div>
-                <div className="max-h-40 space-y-1 overflow-auto pr-1 font-mono text-[11px] text-zinc-300">
-                  {logInsights.resourcePacks.length === 0 ? (
-                    <p className="font-sans text-zinc-400">{t('logResourcepacksEmpty')}</p>
-                  ) : (
-                    logInsights.resourcePacks.map((p) => (
-                      <div key={p} className="truncate">
-                        {p}
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {logInsights.problems.length > 0 ? (
-              <div className="rounded-lg border border-white/[0.08] bg-[#10131d] p-2">
-                <div className="mb-1 text-[11px] font-semibold text-zinc-200">
-                  {t('logIssueHintsTitle')}
-                </div>
-                <div className="max-h-44 space-y-1 overflow-auto pr-1 text-[11px]">
-                  {logInsights.problems.slice(0, 12).map((p) => (
-                    <div
-                      key={`${p.line}-${p.text}`}
-                      className="rounded border border-white/10 bg-black/20 px-2 py-1"
+          <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-hidden pt-2">
+            <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-hidden xl:flex-row xl:items-stretch">
+              <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-2 overflow-hidden">
+                <div className="grid shrink-0 grid-cols-1 gap-2 rounded-lg border border-white/[0.08] bg-[#10131d] p-2 xl:grid-cols-[1fr_auto]">
+                  <div className="grid grid-cols-1 gap-2 lg:grid-cols-[1fr_auto_auto]">
+                    <input
+                      value={logQuery}
+                      onChange={(e) => setLogQuery(e.target.value)}
+                      placeholder={t('logSearchPlaceholder')}
+                      className="min-w-0 rounded-lg border border-white/10 bg-[#0d0f14] px-3 py-2 text-xs text-zinc-200 outline-none focus:border-violet-500/60"
+                    />
+                    <select
+                      value={logSource}
+                      onChange={(e) => setLogSource(e.target.value)}
+                      className="rounded-lg border border-white/10 bg-[#0d0f14] px-2 py-2 text-xs text-zinc-200 outline-none focus:border-violet-500/60"
                     >
-                      <div className="mb-0.5 flex items-center gap-2">
-                        <span className={`rounded border px-1.5 py-0.5 text-[10px] ${kindBadgeClass(p.kind)}`}>
-                          {t(`logIssueKind.${p.kind}`)}
-                        </span>
-                        <span className="font-mono text-zinc-400">L{p.line}</span>
-                      </div>
-                      <p className="line-clamp-2 font-mono text-[10px] text-zinc-300">{p.text}</p>
-                      <p className="mt-0.5 text-zinc-400">{t(`logIssueHint.${p.kind}`)}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ) : null}
-
-            <div className="sticky top-0 z-20 grid grid-cols-1 gap-2 rounded-lg border border-white/[0.08] bg-[#10131d]/95 p-2 backdrop-blur xl:grid-cols-[1fr_auto]">
-              <div className="grid grid-cols-1 gap-2 lg:grid-cols-[1fr_auto_auto]">
-                <input
-                  value={logQuery}
-                  onChange={(e) => setLogQuery(e.target.value)}
-                  placeholder={t('logSearchPlaceholder')}
-                  className="min-w-[18rem] rounded-lg border border-white/10 bg-[#0d0f14] px-3 py-2 text-xs text-zinc-200 outline-none focus:border-violet-500/60"
-                />
-                <select
-                  value={logSource}
-                  onChange={(e) => setLogSource(e.target.value)}
-                  className="rounded-lg border border-white/10 bg-[#0d0f14] px-2 py-2 text-xs text-zinc-200 outline-none focus:border-violet-500/60"
-                >
-                  <option value="all">
-                    {t('allSources')} ({parsedLogLines.length})
-                  </option>
-                  {topSources.map((source) => (
-                    <option key={source} value={source}>
-                      {source} ({logSourceCounts[source] || 0})
-                    </option>
-                  ))}
-                </select>
-                <div className="flex flex-wrap gap-1">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setLogQuery('')
-                      setLogSource('all')
-                      setLogLevelFilter({
-                        error: true,
-                        warn: true,
-                        info: true,
-                        debug: false,
-                        other: true,
-                      })
-                    }}
-                    className="rounded border border-white/15 bg-black/30 px-2 py-1 text-[11px] text-zinc-200 hover:bg-white/10"
-                  >
-                    {t('all')}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setLogLevelFilter({
-                        error: true,
-                        warn: true,
-                        info: false,
-                        debug: false,
-                        other: false,
-                      })
-                    }
-                    className="rounded border border-red-500/35 bg-red-500/10 px-2 py-1 text-[11px] text-red-200 hover:bg-red-500/20"
-                  >
-                    {t('onlyProblems')}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setLogQuery('Exception')}
-                    className="rounded border border-violet-500/35 bg-violet-500/10 px-2 py-1 text-[11px] text-violet-200 hover:bg-violet-500/20"
-                  >
-                    {t('stacktraces')}
-                  </button>
-                </div>
-              </div>
-              <div className="flex flex-wrap items-center gap-1.5">
-                {(['error', 'warn', 'info', 'debug', 'other'] as LogLevel[]).map((level) => (
-                  <button
-                    key={level}
-                    type="button"
-                    onClick={() =>
-                      setLogLevelFilter((prev) => ({ ...prev, [level]: !prev[level] }))
-                    }
-                    className={`inline-flex items-center gap-1 rounded border px-2 py-1 text-[11px] transition ${
-                      logLevelFilter[level]
-                        ? levelBadgeClass(level)
-                        : 'border-white/15 bg-black/30 text-zinc-400 hover:bg-white/10'
-                    }`}
-                  >
-                    <span>{levelLabel(level)}</span>
-                    <span className="font-mono opacity-90">
-                      {logQuery.trim()
-                        ? `${filteredLogLines.filter((row) => row.level === level).length}/${sourceScopedLevelCounts[level]}`
-                        : sourceScopedLevelCounts[level]}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="flex min-h-0 flex-1 flex-col rounded-lg border border-white/[0.07] bg-black/20 p-2">
-              <div className="mb-2 flex flex-wrap items-center justify-between gap-2 text-[11px]">
-                <div className="text-zinc-400">
-                  {t('shownRows')}{' '}
-                  <span className="font-mono text-zinc-200">{filteredLogLines.length}</span> /{' '}
-                  <span className="font-mono text-zinc-200">{parsedLogLines.length}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setCopiedFile('__log__')
-                      void copy(filteredLogLines.map((line) => line.raw).join('\n'))
-                    }}
-                    className="inline-flex items-center gap-1 rounded border border-white/15 bg-black/30 px-2 py-1 text-[11px] text-zinc-200 hover:bg-white/10"
-                  >
-                    <Copy className="h-3 w-3" />
-                    {copiedFile === '__log__' ? t('copied') : t('copyFiltered')}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      downloadText(
-                        `${logFile.name.replace(/\.log$/i, '')}-filtered.log`,
-                        filteredLogLines.map((line) => line.raw).join('\n')
-                      )
-                    }
-                    className="inline-flex items-center gap-1 rounded border border-white/15 bg-black/30 px-2 py-1 text-[11px] text-zinc-200 hover:bg-white/10"
-                  >
-                    <Download className="h-3 w-3" />
-                    {t('downloadFiltered')}
-                  </button>
-                </div>
-              </div>
-
-              <div
-                ref={logViewportRef}
-                onScroll={(e) => setLogScrollTop(e.currentTarget.scrollTop)}
-                className="min-h-0 flex-1 overflow-auto rounded border border-white/10 bg-[#0d0f14] p-1.5"
-                style={{ height: `${viewportHeight}px` }}
-              >
-                {filteredLogLines.length === 0 ? (
-                  <div className="p-3 text-[12px] text-zinc-500">
-                    {t('nothingFound')}
-                    {logQuery.trim() ? (
+                      <option value="all">
+                        {t('allSources')} ({parsedLogLines.length})
+                      </option>
+                      {topSources.map((source) => (
+                        <option key={source} value={source}>
+                          {source} ({logSourceCounts[source] || 0})
+                        </option>
+                      ))}
+                    </select>
+                    <div className="flex flex-wrap gap-1">
                       <button
                         type="button"
-                        onClick={() => setLogQuery('')}
-                        className="ml-2 rounded border border-white/15 bg-black/30 px-2 py-0.5 text-[11px] text-zinc-300 hover:bg-white/10"
+                        onClick={() => {
+                          setLogQuery('')
+                          setLogSource('all')
+                          setLogLevelFilter({
+                            error: true,
+                            warn: true,
+                            info: true,
+                            debug: false,
+                            other: true,
+                          })
+                        }}
+                        className="rounded border border-white/15 bg-black/30 px-2 py-1 text-[11px] text-zinc-200 hover:bg-white/10"
                       >
-                        {t('clearSearch')}
+                        {t('all')}
                       </button>
-                    ) : null}
-                  </div>
-                ) : (
-                  <div className="relative" style={{ height: `${totalVirtualHeight}px` }}>
-                    <div
-                      className="absolute left-0 right-0"
-                      style={{ transform: `translateY(${startIndex * rowHeight}px)` }}
-                    >
-                      {visibleLogLines.map((line) => (
-                        <div
-                          key={`${line.idx}-${line.raw}`}
-                          className={`mb-1 grid grid-cols-[auto_auto_1fr] gap-2 rounded border px-2 py-1 font-mono text-[11px] text-zinc-200/90 ${levelRowClass(line.level)}`}
-                          style={{ height: `${rowHeight}px` }}
-                        >
-                          <span className="min-w-[3rem] text-right text-zinc-400">{line.idx}</span>
-                          <span className="min-w-[4rem] truncate text-zinc-300">{line.source}</span>
-                          <span className="truncate whitespace-pre text-zinc-200/85">{line.raw || ' '}</span>
-                        </div>
-                      ))}
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setLogLevelFilter({
+                            error: true,
+                            warn: true,
+                            info: false,
+                            debug: false,
+                            other: false,
+                          })
+                        }
+                        className="rounded border border-red-500/35 bg-red-500/10 px-2 py-1 text-[11px] text-red-200 hover:bg-red-500/20"
+                      >
+                        {t('onlyProblems')}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setLogQuery('Exception')}
+                        className="rounded border border-violet-500/35 bg-violet-500/10 px-2 py-1 text-[11px] text-violet-200 hover:bg-violet-500/20"
+                      >
+                        {t('stacktraces')}
+                      </button>
                     </div>
                   </div>
-                )}
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    {(['error', 'warn', 'info', 'debug', 'other'] as LogLevel[]).map((level) => (
+                      <button
+                        key={level}
+                        type="button"
+                        onClick={() =>
+                          setLogLevelFilter((prev) => ({ ...prev, [level]: !prev[level] }))
+                        }
+                        className={`inline-flex items-center gap-1 rounded border px-2 py-1 text-[11px] transition ${
+                          logLevelFilter[level]
+                            ? levelBadgeClass(level)
+                            : 'border-white/15 bg-black/30 text-zinc-400 hover:bg-white/10'
+                        }`}
+                      >
+                        <span>{t(`logLevel.${level}`)}</span>
+                        <span className="font-mono opacity-90">
+                          {logQuery.trim()
+                            ? `${filteredLogLines.filter((row) => row.level === level).length}/${sourceScopedLevelCounts[level]}`
+                            : sourceScopedLevelCounts[level]}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-white/[0.07] bg-black/20 p-2">
+                  <div className="mb-2 flex shrink-0 flex-wrap items-center justify-between gap-2 text-[11px]">
+                    <div className="text-zinc-400">
+                      {t('shownRows')}{' '}
+                      <span className="font-mono text-zinc-200">{filteredLogLines.length}</span> /{' '}
+                      <span className="font-mono text-zinc-200">{parsedLogLines.length}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setCopiedFile('__log__')
+                          void copy(filteredLogLines.map((line) => line.raw).join('\n'))
+                        }}
+                        className="inline-flex items-center gap-1 rounded border border-white/15 bg-black/30 px-2 py-1 text-[11px] text-zinc-200 hover:bg-white/10"
+                      >
+                        <Copy className="h-3 w-3" />
+                        {copiedFile === '__log__' ? t('copied') : t('copyFiltered')}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          downloadText(
+                            `${logFile.name.replace(/\.log$/i, '')}-filtered.log`,
+                            filteredLogLines.map((line) => line.raw).join('\n')
+                          )
+                        }
+                        className="inline-flex items-center gap-1 rounded border border-white/15 bg-black/30 px-2 py-1 text-[11px] text-zinc-200 hover:bg-white/10"
+                      >
+                        <Download className="h-3 w-3" />
+                        {t('downloadFiltered')}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="min-h-0 flex-1 overflow-auto rounded border border-white/10 bg-[#0d0f14] p-2">
+                    {filteredLogLines.length === 0 ? (
+                      <div className="p-3 text-[12px] text-zinc-500">
+                        {t('nothingFound')}
+                        {logQuery.trim() ? (
+                          <button
+                            type="button"
+                            onClick={() => setLogQuery('')}
+                            className="ml-2 rounded border border-white/15 bg-black/30 px-2 py-0.5 text-[11px] text-zinc-300 hover:bg-white/10"
+                          >
+                            {t('clearSearch')}
+                          </button>
+                        ) : null}
+                      </div>
+                    ) : (
+                      <div className="space-y-1">
+                        {filteredLogLines.map((line) => (
+                          <div
+                            key={`${line.idx}-${line.raw}`}
+                            className={`grid grid-cols-[auto_auto_1fr] gap-x-2 gap-y-0 rounded border px-2 py-1.5 font-mono text-[11px] leading-snug text-zinc-200/90 ${levelRowClass(line.level)}`}
+                          >
+                            <span className="shrink-0 text-right tabular-nums text-zinc-400">
+                              {line.idx}
+                            </span>
+                            <span className="w-28 shrink-0 truncate text-zinc-300 sm:w-36">
+                              {line.source}
+                            </span>
+                            <span className="min-w-0 whitespace-pre-wrap break-all text-zinc-200/90">
+                              {line.raw || ' '}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
+
+              <aside className="flex min-h-0 max-h-[40vh] w-full shrink-0 flex-col gap-2 overflow-hidden border-white/10 xl:max-h-none xl:w-[17.5rem] xl:border-l xl:pl-3">
+                <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto overscroll-contain pr-0.5">
+                  <div className="shrink-0 rounded-lg border border-red-500/20 bg-red-500/[0.05] p-2">
+                    <div className="mb-1 text-[11px] font-semibold text-red-200">
+                      {t('logIssuesTitle')} ({logInsights.problems.length})
+                    </div>
+                    <div className="max-h-32 space-y-1 overflow-y-auto text-[11px]">
+                      {logInsights.problems.length === 0 ? (
+                        <p className="text-zinc-400">{t('logIssuesEmpty')}</p>
+                      ) : (
+                        (
+                          [
+                            'auth',
+                            'realms',
+                            'class_missing',
+                            'dependency',
+                            'version',
+                            'resourcepack',
+                            'settings',
+                            'network',
+                            'other',
+                          ] as LogProblemKind[]
+                        )
+                          .filter((k) => problemCountsByKind[k] > 0)
+                          .map((k) => (
+                            <div key={k} className="flex items-center justify-between gap-2">
+                              <span
+                                className={`rounded border px-1.5 py-0.5 text-[10px] ${kindBadgeClass(k)}`}
+                              >
+                                {t(`logIssueKind.${k}`)}
+                              </span>
+                              <span className="font-mono text-zinc-300">{problemCountsByKind[k]}</span>
+                            </div>
+                          ))
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="shrink-0 rounded-lg border border-white/10 bg-black/20 p-2">
+                    <div className="mb-0.5 text-[11px] font-semibold text-sky-200">
+                      {t('logModsTitle')} ({logInsights.mods.length})
+                    </div>
+                    <p className="mb-1 text-[10px] leading-snug text-zinc-500">{t('logModsHint')}</p>
+                    <div className="max-h-36 space-y-0.5 overflow-y-auto font-mono text-[10px] text-zinc-300">
+                      {logInsights.mods.length === 0 ? (
+                        <p className="font-sans text-zinc-400">{t('logModsEmpty')}</p>
+                      ) : (
+                        logInsights.mods.map((m) => (
+                          <div key={m} className="break-all">
+                            {m}
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="shrink-0 rounded-lg border border-white/10 bg-black/20 p-2">
+                    <div className="mb-0.5 text-[11px] font-semibold text-cyan-200">
+                      {t('logResourcepacksTitle')} ({logInsights.resourcePacks.length})
+                    </div>
+                    <p className="mb-1 text-[10px] leading-snug text-zinc-500">{t('logResourcepacksHint')}</p>
+                    <div className="max-h-32 space-y-0.5 overflow-y-auto font-mono text-[10px] text-zinc-300">
+                      {logInsights.resourcePacks.length === 0 ? (
+                        <p className="font-sans text-zinc-400">{t('logResourcepacksEmpty')}</p>
+                      ) : (
+                        logInsights.resourcePacks.map((p) => (
+                          <div key={p} className="break-all">
+                            {p === '__rp_programmer_art_overlay_only__'
+                              ? t('logResourcePackOverlayOnly')
+                              : p}
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+
+                  {logInsights.problems.length > 0 ? (
+                    <div className="shrink-0 rounded-lg border border-white/[0.08] bg-[#10131d] p-2">
+                      <div className="mb-1 text-[11px] font-semibold text-zinc-200">
+                        {t('logIssueHintsTitle')}
+                      </div>
+                      <div className="max-h-48 space-y-1 overflow-y-auto text-[11px]">
+                        {logInsights.problems.slice(0, 10).map((p) => (
+                          <div
+                            key={`${p.line}-${p.text}`}
+                            className="rounded border border-white/10 bg-black/20 px-2 py-1"
+                          >
+                            <div className="mb-0.5 flex flex-wrap items-center gap-2">
+                              <span
+                                className={`rounded border px-1.5 py-0.5 text-[10px] ${kindBadgeClass(p.kind)}`}
+                              >
+                                {t(`logIssueKind.${p.kind}`)}
+                              </span>
+                              <span className="font-mono text-zinc-400">L{p.line}</span>
+                            </div>
+                            <p className="line-clamp-3 font-mono text-[10px] text-zinc-300">{p.text}</p>
+                            <p className="mt-0.5 text-zinc-400">{t(`logIssueHint.${p.kind}`)}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+              </aside>
             </div>
           </div>
         ) : customFile ? (

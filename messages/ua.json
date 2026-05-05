@@ -107,10 +107,21 @@
     "logIssuesTitle": "Проблеми запуску",
     "logIssueHintsTitle": "Підказки по знайдених проблемах",
     "logIssuesEmpty": "Явних проблем у цьому логу не знайдено.",
+    "logFileLabel": "Лог:",
     "logModsTitle": "Моди",
+    "logModsHint": "Лише верхній рівень списку Fabric (без JAR-in-JAR). java та minecraft приховано.",
     "logModsEmpty": "Список модів не знайдено у цьому логу.",
     "logResourcepacksTitle": "Ресурспаки",
+    "logResourcepacksHint": "Лише file/ з папки ресурсів і вбудовані programmer_art або high_contrast.",
     "logResourcepacksEmpty": "Ресурспаки у логу не знайдені.",
+    "logResourcePackOverlayOnly": "Лише накладення programmer_art з модів (без увімкненого набору програміста)",
+    "logLevel": {
+      "error": "Помилки",
+      "warn": "Попередження",
+      "info": "Інфо",
+      "debug": "Відладка",
+      "other": "Інше"
+    },
     "logIssueKind": {
       "auth": "Авторизація",
       "realms": "Realms",

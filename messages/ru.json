@@ -107,10 +107,21 @@
     "logIssuesTitle": "Проблемы запуска",
     "logIssueHintsTitle": "Подсказки по найденным проблемам",
     "logIssuesEmpty": "Явных проблем в этом логе не найдено.",
+    "logFileLabel": "Лог:",
     "logModsTitle": "Моды",
+    "logModsHint": "Только верхний уровень списка Fabric (без JAR-in-JAR). java и minecraft не показываются.",
     "logModsEmpty": "Список модов не найден в этом логе.",
     "logResourcepacksTitle": "Ресурспаки",
+    "logResourcepacksHint": "Только файл из папки ресурсов (prefix file/) и встроенные programmer_art или high_contrast.",
     "logResourcepacksEmpty": "Ресурспаки в логе не найдены.",
+    "logResourcePackOverlayOnly": "Только наложение programmer_art с модов (без включенного набора программиста)",
+    "logLevel": {
+      "error": "Ошибки",
+      "warn": "Предупреждения",
+      "info": "Инфо",
+      "debug": "Отладка",
+      "other": "Остальное"
+    },
     "logIssueKind": {
       "auth": "Авторизация",
       "realms": "Realms",
